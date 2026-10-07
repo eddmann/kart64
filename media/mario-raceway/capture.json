@@ -1,0 +1,43 @@
+{
+  "capture_date": "2026-10-07",
+  "source_base": "Pre-release work since squashed into the initial commit (feat: add Kart64 browser game)",
+  "local_changes": "Landing-page preview line removed and landscape action deck repositioned before capture.",
+  "environment": "iOS 26 Simulator, installed localhost Home Screen PWA",
+  "fixture": "Local extracted assets and existing test autopilot; fixture outside repository",
+  "texture_pack": {
+    "file": "mk64-reloaded-phone-karts128.o2r",
+    "bytes": 177301680,
+    "sha256": "b40a3a8ab211a506850a7afe190b32d375bc6fca29487e68e31b8ddd9cf56a44"
+  },
+  "original_recordings": {
+    "landscape": {
+      "file": "landscape-full.mp4",
+      "bytes": 119105556,
+      "sha256": "473ecacd8476709fb7f971f93e6f8cd5f131c7c56c7947c137fba87a30bab2b7"
+    },
+    "portrait": {
+      "file": "portrait-full.mp4",
+      "bytes": 83959034,
+      "sha256": "cddd71754a17e8c9eb3a0be8be7edbf570fc1a85e9d5e5e2108955898b8c9f23"
+    },
+    "tour": {
+      "file": "tour-full.mp4",
+      "bytes": 85162531,
+      "sha256": "58a0ac7661d19fbd0a432bcca2680a960e048e7bac47b0d2e4fcbdf60ebc5124"
+    }
+  },
+  "source_encoding": {
+    "codec": "H.264",
+    "encoder": "libx264",
+    "preset": "slow",
+    "crf": 25,
+    "fps": 24,
+    "audio": false,
+    "faststart": true,
+    "filters": {
+      "landscape": "scale=1280:-2,fps=24",
+      "portrait": "scale=590:1280,fps=24",
+      "tour": "scale=590:1280,fps=24"
+    }
+  }
+}

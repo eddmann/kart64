@@ -1,0 +1,11 @@
+dist/
+node_modules/
+.DS_Store
+
+# ROM-derived — never commit, never deploy
+*.z64
+*.v64
+*.n64
+*.o2r
+*.o2r.*
+baserom*

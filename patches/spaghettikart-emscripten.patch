@@ -1,0 +1,1095 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 53ae41d78..9e13a73a9 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -95,6 +95,11 @@ set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Spaghetti
+ 
+ # Add a custom module path to locate additional CMake modules
+ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
++
++if(EMSCRIPTEN)
++    include(cmake/emscripten-deps.cmake)
++endif()
++
+ set(YAML_CPP_STATIC_DEFINE ON)
+ add_compile_definitions(YAML_CPP_STATIC_DEFINE)
+ include(cmake/lus-cvars.cmake)
+@@ -362,7 +367,9 @@ endif()
+ # OpenGL / OpenGLES library
+ ################################################################################
+ if (UNIX AND NOT APPLE)
+-    if (USE_OPENGLES)
++    if (EMSCRIPTEN)
++        # GLES3 is provided by the toolchain (WebGL2); no library to find.
++    elseif (USE_OPENGLES)
+         find_library(GLESv2_LIBRARY GLESv2 REQUIRED)
+         target_link_libraries(${PROJECT_NAME} PRIVATE ${GLESv2_LIBRARY})
+     else()
+@@ -537,6 +544,22 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "CafeOS")
+   target_include_directories(${PROJECT_NAME} PRIVATE
+         ${DEVKITPRO}/portlibs/wiiu/include/
+     )
++elseif(EMSCRIPTEN)
++  # ogg/vorbis come from emscripten ports (compile flags added in
++  # cmake/emscripten-deps.cmake); expose them under the expected target names.
++  foreach(_avtgt Ogg::ogg Vorbis::vorbis Vorbis::vorbisenc Vorbis::vorbisfile)
++    if(NOT TARGET ${_avtgt})
++      add_library(${_avtgt} INTERFACE IMPORTED)
++      set_target_properties(${_avtgt} PROPERTIES
++        INTERFACE_LINK_OPTIONS "--use-port=ogg;--use-port=vorbis")
++    endif()
++  endforeach()
++  set(ADDITIONAL_LIBRARY_DEPENDENCIES
++        "Ogg::ogg"
++        "Vorbis::vorbis"
++        "Vorbis::vorbisenc"
++        "Vorbis::vorbisfile"
++ )
+ else()
+   find_package(Ogg REQUIRED)
+   find_package(Vorbis REQUIRED)
+@@ -694,6 +717,10 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+     target_link_options(${PROJECT_NAME} PRIVATE
+           -pthread
+       )
++  elseif (EMSCRIPTEN)
++    # No native CPU flags (-msse2 etc.) or -export-dynamic for wasm. The
++    # -pthread flags come globally from cmake/emscripten-deps.cmake — this is a
++    # full pthreads build, which is why serving requires COOP/COEP headers.
+   elseif (NOT CMAKE_SYSTEM_NAME STREQUAL "CafeOS")
+     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+       set(CPU_OPTION -msse2 -mfpmath=sse)
+diff --git a/cmake/emscripten-deps.cmake b/cmake/emscripten-deps.cmake
+new file mode 100644
+index 000000000..980279a47
+--- /dev/null
++++ b/cmake/emscripten-deps.cmake
+@@ -0,0 +1,118 @@
++# Dependency provisioning for the Emscripten (browser/WASM) target.
++#
++# On desktop platforms these come from system packages (apt/vcpkg/brew); under
++# Emscripten every library must be compiled to wasm. SDL2 and zlib use the
++# emscripten ports (prebuild once with: embuilder build sdl2 zlib). Everything
++# else is fetched from source and redirected into the existing find_package()
++# calls via OVERRIDE_FIND_PACKAGE.
++
++include(FetchContent)
++
++# ---- SDL2 / zlib / ogg / vorbis via emscripten ports -----------------------
++add_compile_options("--use-port=sdl2" "--use-port=ogg" "--use-port=vorbis")
++add_link_options("--use-port=sdl2")
++
++# The engine is inherently threaded (resource-manager pool, audio thread):
++# full pthreads build. Requires COOP/COEP headers when serving (SharedArrayBuffer).
++add_compile_options("-pthread")
++add_link_options("-pthread" "-sPTHREAD_POOL_SIZE=16")
++
++# Persistent storage: the page mounts an IDBFS at /data (config, saves, and
++# the extracted o2r archives survive reloads).
++add_link_options("-lidbfs.js")
++
++# Torch's extraction recipe (open project files, no Nintendo content) rides
++# along as preloaded data so first-run ROM extraction can happen in-browser.
++add_link_options(
++    "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/config.yml@/torch/config.yml"
++    "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/yamls@/torch/yamls"
++    "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/meta@/torch/meta"
++)
++
++# GLES3 -> WebGL2; the game renders through libultraship's USE_OPENGLES path.
++add_link_options(
++    "-sMIN_WEBGL_VERSION=2"
++    "-sMAX_WEBGL_VERSION=2"
++    "-sFULL_ES3=1"
++    "-sALLOW_MEMORY_GROWTH=1"
++    # ~275MB of static data (compiled-in course/audio tables); leave headroom.
++    "-sINITIAL_MEMORY=512MB"
++)
++# ASSERTIONS adds a check to every emscripten library call, on the same main
++# thread that services the audio callback. Useful while bringing the port up,
++# but it was left on in Release and shows up as frame spikes.
++add_link_options("$<IF:$<CONFIG:Release>,-sASSERTIONS=0,-sASSERTIONS=1>")
++
++set(SDL2_INCLUDE_DIRS "${EMSCRIPTEN_SYSROOT}/include/SDL2")
++if(NOT TARGET SDL2::SDL2)
++    add_library(SDL2::SDL2 INTERFACE IMPORTED)
++    set_target_properties(SDL2::SDL2 PROPERTIES
++        INTERFACE_INCLUDE_DIRECTORIES "${SDL2_INCLUDE_DIRS}")
++endif()
++
++# ---- source builds for the usual system packages ---------------------------
++# A plain set() is not enough: libzip's option(BUILD_SHARED_LIBS) runs under
++# an older policy and takes the cached value (ON by default), and a wasm
++# "shared" libzip then fails to link against the non-PIC zlib port
++# (R_WASM_MEMORY_ADDR_LEB / "recompile with -fPIC").
++set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
++
++# spdlog's bundled fmt: consteval format-string checking fails under new clang
++# (same issue cmake/TorchExternalFixes.cmake handles for AppleClang).
++add_compile_definitions(FMT_CONSTEVAL=)
++
++# libzip (o2r archives are zip files)
++set(LIBZIP_DO_INSTALL OFF CACHE BOOL "" FORCE)
++set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
++set(BUILD_REGRESS OFF CACHE BOOL "" FORCE)
++set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
++set(BUILD_DOC OFF CACHE BOOL "" FORCE)
++set(ENABLE_COMMONCRYPTO OFF CACHE BOOL "" FORCE)
++set(ENABLE_GNUTLS OFF CACHE BOOL "" FORCE)
++set(ENABLE_MBEDTLS OFF CACHE BOOL "" FORCE)
++set(ENABLE_OPENSSL OFF CACHE BOOL "" FORCE)
++set(ENABLE_BZIP2 OFF CACHE BOOL "" FORCE)
++set(ENABLE_LZMA OFF CACHE BOOL "" FORCE)
++set(ENABLE_ZSTD OFF CACHE BOOL "" FORCE)
++FetchContent_Declare(libzip
++    GIT_REPOSITORY https://github.com/nih-at/libzip.git
++    GIT_TAG v1.10.1
++    GIT_SHALLOW TRUE
++    OVERRIDE_FIND_PACKAGE)
++
++set(tinyxml2_BUILD_TESTING OFF CACHE BOOL "" FORCE)
++FetchContent_Declare(tinyxml2
++    GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
++    GIT_TAG 10.0.0
++    GIT_SHALLOW TRUE
++    OVERRIDE_FIND_PACKAGE)
++
++set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
++FetchContent_Declare(spdlog
++    GIT_REPOSITORY https://github.com/gabime/spdlog.git
++    GIT_TAG v1.14.1
++    GIT_SHALLOW TRUE
++    OVERRIDE_FIND_PACKAGE)
++
++set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
++FetchContent_Declare(nlohmann_json
++    GIT_REPOSITORY https://github.com/nlohmann/json.git
++    GIT_TAG v3.11.3
++    GIT_SHALLOW TRUE
++    OVERRIDE_FIND_PACKAGE)
++
++FetchContent_MakeAvailable(libzip tinyxml2 spdlog nlohmann_json)
++
++# Build-tree target names differ from the install-exported ones some
++# find_package() consumers expect; add the namespaced aliases if absent.
++if(NOT TARGET libzip::zip)
++    add_library(libzip::zip ALIAS zip)
++endif()
++if(NOT TARGET tinyxml2::tinyxml2)
++    add_library(tinyxml2::tinyxml2 ALIAS tinyxml2)
++endif()
++
++# Sources across the tree include <zip.h> without linking libzip::zip; with a
++# system libzip that comes from /usr/include, so mirror it globally here
++# (zipconf.h is generated into the libzip build dir).
++include_directories(${libzip_SOURCE_DIR}/lib ${libzip_BINARY_DIR})
+diff --git a/src/camera.c b/src/camera.c
+index dcd39e88a..000c7bea7 100644
+--- a/src/camera.c
++++ b/src/camera.c
+@@ -504,6 +504,14 @@ void func_8001CCEC(Player* player, Camera* camera, Vec3f arg2, f32* arg3, f32* a
+     sp84[0] = camera->unk_3C[0];
+     sp84[1] = camera->unk_3C[1] + (player->unk_DB4.unk1E * 0.85) + temp_f12;
+     sp84[2] = camera->unk_3C[2] + temp_f0 - D_80164A90[index];
++#ifdef __EMSCRIPTEN__
++    // Kart64: the page raises and pulls back the follow camera on a portrait
++    // phone, where the stock offsets frame a sliver of road.
++    sp90[1] += CVarGetFloat("gKart64.CamHeight", 0.0f);
++    sp90[2] += CVarGetFloat("gKart64.CamDist", 0.0f);
++    sp84[1] += CVarGetFloat("gKart64.LookHeight", 0.0f);
++    sp84[2] += CVarGetFloat("gKart64.LookDist", 0.0f);
++#endif
+     arg2[0] = camera->lookAt[0];
+     arg2[1] = camera->lookAt[1];
+     arg2[2] = camera->lookAt[2];
+@@ -724,6 +732,14 @@ void func_8001D944(Player* player, Camera* camera, Vec3f arg2, f32* arg3, f32* a
+     sp84[0] = camera->unk_3C[0];
+     sp84[1] = camera->unk_3C[1] + (player->unk_DB4.unk1E * 0.85) + temp_f12;
+     sp84[2] = camera->unk_3C[2] + temp_f0 - D_80164A90[index];
++#ifdef __EMSCRIPTEN__
++    // Kart64: the page raises and pulls back the follow camera on a portrait
++    // phone, where the stock offsets frame a sliver of road.
++    sp90[1] += CVarGetFloat("gKart64.CamHeight", 0.0f);
++    sp90[2] += CVarGetFloat("gKart64.CamDist", 0.0f);
++    sp84[1] += CVarGetFloat("gKart64.LookHeight", 0.0f);
++    sp84[2] += CVarGetFloat("gKart64.LookDist", 0.0f);
++#endif
+     arg2[0] = camera->lookAt[0];
+     arg2[1] = camera->lookAt[1];
+     arg2[2] = camera->lookAt[2];
+@@ -1130,6 +1146,22 @@ void func_8001EE98(Player* player, Camera* camera, s8 index) {
+     }
+ }
+ 
++#ifdef __EMSCRIPTEN__
++// Kart64: func_8001F394 eases camera->fieldOfView one degree a frame towards
++// the game's target and writes the result back, so anything added to it is
++// fed straight back in as next frame's starting point. The portrait widening
++// therefore has to be kept out of that loop: remember the game's own value,
++// and hand that to the easing as long as nobody else has reset the FOV since.
++static f32 sKart64FovBase[4];
++static f32 sKart64FovWritten[4];
++static f32 kart64_base_fov(Camera* camera, s32 playerIndex) {
++    if (playerIndex >= 0 && playerIndex < 4 && camera->fieldOfView == sKart64FovWritten[playerIndex]) {
++        return sKart64FovBase[playerIndex];
++    }
++    return camera->fieldOfView;
++}
++#endif
++
+ void func_8001F394(Player* player) {
+     f32 var_f0;
+     UNUSED s32 pad;
+@@ -1253,7 +1285,11 @@ void func_8001F394(Player* player) {
+                     D_80164498[playerIndex] = 0.0f;
+                 }
+             }
++#ifdef __EMSCRIPTEN__
++            var_f0 = func_80014EE4(kart64_base_fov(camera, playerIndex), playerIndex);
++#else
+             var_f0 = func_80014EE4(camera->fieldOfView, playerIndex);
++#endif
+             break;
+         case SCREEN_MODE_2P_SPLITSCREEN_HORIZONTAL:
+         case SCREEN_MODE_2P_SPLITSCREEN_VERTICAL:
+@@ -1261,6 +1297,17 @@ void func_8001F394(Player* player) {
+             var_f0 = func_80014EE4(camera->fieldOfView, playerIndex);
+             break;
+     }
++#ifdef __EMSCRIPTEN__
++    // Kart64: widen the vertical FOV on a portrait phone. The projection is
++    // always 4:3 and the interpreter crops the sides to the window aspect, so
++    // a tall window sees a narrow horizontal slice unless the vertical FOV
++    // grows to compensate. Zero on desktop and in landscape.
++    if (playerIndex >= 0 && playerIndex < 4) {
++        sKart64FovBase[playerIndex] = var_f0;
++        var_f0 += CVarGetFloat("gKart64.FovAdd", 0.0f);
++        sKart64FovWritten[playerIndex] = var_f0;
++    }
++#endif
+     camera->fieldOfView = var_f0;
+     camera->unk_B4 = var_f0;
+ }
+diff --git a/src/code_80057C60.c b/src/code_80057C60.c
+index 57eab27ab..ec6e007a1 100644
+--- a/src/code_80057C60.c
++++ b/src/code_80057C60.c
+@@ -42,6 +42,15 @@
+ #include "engine/editor/Editor.h"
+ #include "port/interpolation/FrameInterpolation.h"
+ 
++#ifdef __EMSCRIPTEN__
++// Kart64: marks which portrait HUD group the following draws belong to
++// (src/port/kart64_web.cpp). Nothing is emitted unless that layout is on.
++void Kart64_HudGroup(s32 id);
++#define KART64_HUD(id) Kart64_HudGroup(id)
++#else
++#define KART64_HUD(id)
++#endif
++
+ //! @warning this macro is undef'd at the end of this file
+ #define MAKE_RGB(r, g, b) (((r) << 0x10) | ((g) << 0x08) | (b << 0x00))
+ 
+@@ -730,10 +739,15 @@ void func_80058F78(void) {
+ 
+         set_matrix_hud_screen();
+         if ((!gDemoMode) && (gIsHUDVisible != 0) && (D_801657D8 == 0)) {
++            KART64_HUD(3);
+             draw_item_window(PLAYER_ONE);
++            KART64_HUD(0);
+             if (gHUDModes != 2) {
++                KART64_HUD(2);
+                 render_hud_timer(PLAYER_ONE);
++                KART64_HUD(1);
+                 draw_simplified_lap_count(PLAYER_ONE);
++                KART64_HUD(0);
+                 func_8004EB38(0);
+                 if (D_801657E6 != false) {
+                     if (CVarGetInteger("gEnableDigitalSpeedometer", false) == true) {
+@@ -815,8 +829,11 @@ void func_800591B4(void) {
+         if (gIsHUDVisible != 0) {
+             if (D_801657D8 == 0) {
+                 if (D_801657F0 != false) {
++                    KART64_HUD(4);
+                     func_800514BC();
++                    KART64_HUD(0);
+                 }
++                KART64_HUD(5);
+                 if ((!gDemoMode) && (D_801657E8 != false)) {
+                     if (D_80165800[0] != 0) {
+                         func_8004EE54(0);
+@@ -834,10 +851,13 @@ void func_800591B4(void) {
+                     }
+                 }
+             }
++            KART64_HUD(4);
+             if ((gHUDModes != 2) && (gModeSelection == GRAND_PRIX) && (D_8018D2BC != 0)) {
+                 func_80050320();
+             }
++            KART64_HUD(6);
+             func_800590D4();
++            KART64_HUD(0);
+         }
+         func_8005902C();
+         func_80057DD0();
+diff --git a/src/main.c b/src/main.c
+index 728d65609..be64cee17 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -387,12 +387,94 @@ void update_controller(s32 index) {
+     controller->stickDirection = stick;
+ }
+ 
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++
++// Touch input from the page. The browser has no way to synthesise a gamepad,
++// and synthetic key events would only ever give binary steering -- which makes
++// drifting unusable. So the page writes the pad directly: stick_x/stick_y are
++// the real analog range (-128..127), buttons is an N64 mask (A 0x8000,
++// B 0x4000, Z 0x2000, START 0x1000, R 0x0010).
++//
++// active=0 hands control straight back to the keyboard/gamepad path, so a
++// desktop browser and a phone can share one build with no mode switch.
++static s8 sTouchStickX = 0;
++static s8 sTouchStickY = 0;
++static u16 sTouchButtons = 0;
++static s32 sTouchActive = 0;
++static s32 sTouchAutoAccel = 0;
++
++// Auto-accelerate: hold A for the player, but only while a race is actually
++// being driven (not the grid countdown, where an early A is a burnout, and
++// not the menus, where A is confirm).
++EMSCRIPTEN_KEEPALIVE void Kart64_SetAutoAccel(s32 on) {
++    sTouchAutoAccel = on;
++}
++
++EMSCRIPTEN_KEEPALIVE void Kart64_SetTouchPad(s32 active, s32 stickX, s32 stickY, s32 buttons) {
++    sTouchActive = active;
++    sTouchStickX = (s8) stickX;
++    sTouchStickY = (s8) stickY;
++    sTouchButtons = (u16) buttons;
++}
++
++// Drift assist, for the page's one-thumb (Tour) controls: a held drift that
++// charges itself. MK64 charges a mini-turbo while sliding when the stick is
++// held against the turn for 18 kart updates and brought back, then 8 more
++// against and back again (func_8002A8A4 in player_controller.c). A thumb
++// holding a drift cannot do that, so while the page reports a drift held in
++// direction dir (-1 left, 1 right; 0 ends it) the stick is overridden by
++// frame: the slide's own direction while the hop lands, then two short
++// nudges against it. Counted here, in the controller read, because the game
++// counts updates (two per controller frame); a slow device stretches the
++// wall-clock time, never the count. The nudges are light and no longer than
++// they need to be (the stick filter lags about three frames, then two counts
++// a frame), because steering against the bend for long carries the kart into
++// the outside wall, which ends the slide.
++static s32 sDriftDir = 0;
++static s32 sDriftFrames = 0;
++EMSCRIPTEN_KEEPALIVE void Kart64_SetDriftAssist(s32 dir) {
++    sDriftDir = dir < 0 ? -1 : dir > 0 ? 1 : 0;
++    sDriftFrames = 0;
++}
++static s8 drift_assist_stick(s8 stick) {
++    // frames:  0..9 into the slide (the hop lands at about frame 8)
++    //         10..23 against (3 lag + 11 x 2 = 22 counts >= 18), 24..27 back,
++    //         28..36 against (3 lag + 6 x 2 = 12 counts >= 8), then back for good:
++    //         charged a little over a second after the flick.
++    s32 f = sDriftFrames++;
++    s32 against = (f >= 10 && f < 24) || (f >= 28 && f < 37);
++    if (against) {
++        return (s8) (-sDriftDir * 40);
++    }
++    s32 mag = stick < 0 ? -stick : stick;
++    return (s8) (sDriftDir * (mag > 40 ? mag : 40));
++}
++#endif
++
+ void read_controllers(void) {
+     OSMesg msg;
+ 
+     osContStartReadData(&gSIEventMesgQueue);
+     // osRecvMesg(&gSIEventMesgQueue, &msg, OS_MESG_BLOCK);
+     osContGetReadData(gControllerPads);
++#ifdef __EMSCRIPTEN__
++    // Merge rather than replace: a bluetooth gamepad paired to the phone should
++    // still work while the touch overlay is on screen.
++    // Auto-accelerate does not wait for a first touch: the race may start with
++    // both thumbs still off the screen.
++    if (sTouchAutoAccel && gGamestate == RACING && gRaceState == RACE_IN_PROGRESS && !gIsGamePaused) {
++        gControllerPads[0].button |= A_BUTTON;
++    }
++    if (sTouchActive) {
++        gControllerPads[0].button |= sTouchButtons;
++        s8 sx = sDriftDir != 0 && !gIsGamePaused ? drift_assist_stick(sTouchStickX) : sTouchStickX;
++        if (sx != 0 || sTouchStickY != 0) {
++            gControllerPads[0].stick_x = sx;
++            gControllerPads[0].stick_y = sTouchStickY;
++        }
++    }
++#endif
+     update_controller(0);
+     update_controller(1);
+     update_controller(2);
+diff --git a/src/math_util_2.c b/src/math_util_2.c
+index cad716279..715e20f0e 100644
+--- a/src/math_util_2.c
++++ b/src/math_util_2.c
+@@ -17,6 +17,19 @@
+ #include "engine/Matrix.h"
+ #include "port/interpolation/FrameInterpolation.h"
+ 
++#ifdef __EMSCRIPTEN__
++// Kart64: in the portrait HUD layout (src/port/kart64_web.cpp) positions stay
++// in plain 320x240 coordinates and the renderer places each group, so the
++// widescreen edge anchoring below must stand aside.
++extern int gKart64HudFlat;
++#define OTRGetDimensionFromLeftEdge(x) (gKart64HudFlat ? (float) (x) : OTRGetDimensionFromLeftEdge(x))
++#define OTRGetDimensionFromRightEdge(x) (gKart64HudFlat ? (float) (x) : OTRGetDimensionFromRightEdge(x))
++void Kart64_HudGroup(s32 id);
++#define KART64_HUD(id) Kart64_HudGroup(id)
++#else
++#define KART64_HUD(id)
++#endif
++
+ #pragma intrinsic(sqrtf)
+ 
+ Mat4 sInterpolationMatrixStack[0x1000];
+diff --git a/src/menu_items.c b/src/menu_items.c
+index b6142ca37..ccc973e80 100644
+--- a/src/menu_items.c
++++ b/src/menu_items.c
+@@ -6497,6 +6497,17 @@ void render_menus(MenuItem* arg0) {
+                 var_a1 = arg0->type - MENU_ITEM_UI_1P_GAME;
+                 func_800A8270(var_a1, arg0);
+                 func_800A0FA4(arg0, var_a1);
++#ifdef __EMSCRIPTEN__
++                // Kart64: dim the multiplayer columns, which the web build
++                // does not offer (menus.c). Same box as the panel and its mode
++                // list, following the panel through its open/close animation.
++                if ((var_a1 >= 1) && (arg0->param1 < 32)) {
++                    gDisplayListHead = draw_box(gDisplayListHead, arg0->column + arg0->param1, arg0->row,
++                                                (arg0->column - arg0->param1) + 64,
++                                                arg0->row + 65 + (18 * (gPlayerModeSelection[var_a1] + 1)), 0, 0, 0,
++                                                170);
++                }
++#endif
+                 break;
+             case MENU_ITEM_UI_OK:
+                 func_800A8564(arg0);
+diff --git a/src/menus.c b/src/menus.c
+index d9b84c0a9..244ef4766 100644
+--- a/src/menus.c
++++ b/src/menus.c
+@@ -1314,7 +1314,18 @@ void main_menu_act(struct Controller* controller, u16 controllerIdx) {
+                 break;
+             }
+             case MAIN_MENU_PLAYER_SELECT: {
++#ifdef __EMSCRIPTEN__
++                // Kart64: the web build is one player -- one touch deck, and a
++                // full-screen layout and HUD that only know the 1P screen. The
++                // 2P-4P columns stay on the menu, dimmed (menu_items.c), but
++                // the cursor cannot reach them.
++                if (gPlayerCount > 1) {
++                    gPlayerCount = 1;
++                }
++                if (0) {
++#else
+                 if ((btnAndStick & R_JPAD) && gPlayerCount < 4) {
++#endif
+                     gPlayerCount += 1;
+                     reset_cycle_flash_menu();
+                     play_sound2(SOUND_MENU_CURSOR_MOVE);
+diff --git a/src/port/Engine.cpp b/src/port/Engine.cpp
+index 3d516130e..52ad13c00 100644
+--- a/src/port/Engine.cpp
++++ b/src/port/Engine.cpp
+@@ -53,6 +53,7 @@ float gInterpolationStep = 0.0f;
+ #include <fast/resource/factory/VertexFactory.h>
+ #include <fast/resource/factory/LightFactory.h>
+ // #include <PngFactory.h>
++#include <atomic>
+ #include "audio/internal.h"
+ #include "audio/GameAudio.h"
+ }
+@@ -98,10 +99,20 @@ GameEngine::GameEngine() {
+     auto defaultMappings = std::make_shared<Ship::ControllerDefaultMappings>(
+         // KeyboardKeyToButtonMappings
+         std::unordered_map<CONTROLLERBUTTONS_T, std::unordered_set<Ship::KbScancode>>{
++#ifdef __EMSCRIPTEN__
++            // Kart64: in a browser Shift and Ctrl are poor defaults on their
++            // own -- Ctrl+Left/Right switches desktops on macOS, so braking
++            // into a corner would leave the tab. X/C/R are accepted as well.
++            { BTN_A, { Ship::KbScancode::LUS_KB_X, Ship::KbScancode::LUS_KB_SHIFT} },
++            { BTN_B, { Ship::KbScancode::LUS_KB_C, Ship::KbScancode::LUS_KB_CONTROL} },
++            { BTN_L, { Ship::KbScancode::LUS_KB_Q} },
++            { BTN_R, { Ship::KbScancode::LUS_KB_SPACE, Ship::KbScancode::LUS_KB_R} },
++#else
+             { BTN_A, { Ship::KbScancode::LUS_KB_SHIFT} },
+             { BTN_B, { Ship::KbScancode::LUS_KB_CONTROL} },
+             { BTN_L, { Ship::KbScancode::LUS_KB_Q} },
+             { BTN_R, { Ship::KbScancode::LUS_KB_SPACE} },
++#endif
+             { BTN_Z, { Ship::KbScancode::LUS_KB_Z} },
+             { BTN_START, { Ship::KbScancode::LUS_KB_ENTER} },
+             { BTN_CUP, { Ship::KbScancode::LUS_KB_T} },
+@@ -120,6 +131,14 @@ GameEngine::GameEngine() {
+                 { Ship::Direction::DOWN, Ship::KbScancode::LUS_KB_ARROWKEY_DOWN},
+                 { Ship::Direction::LEFT, Ship::KbScancode::LUS_KB_ARROWKEY_LEFT},
+                 { Ship::Direction::RIGHT, Ship::KbScancode::LUS_KB_ARROWKEY_RIGHT}
++#ifdef __EMSCRIPTEN__
++                // Kart64: WASD steers too, for the left hand with X/C/Z.
++                ,
++                { Ship::Direction::UP, Ship::KbScancode::LUS_KB_W},
++                { Ship::Direction::DOWN, Ship::KbScancode::LUS_KB_S},
++                { Ship::Direction::LEFT, Ship::KbScancode::LUS_KB_A},
++                { Ship::Direction::RIGHT, Ship::KbScancode::LUS_KB_D}
++#endif
+             }}
+         },
+         // SDLButtonToButtonMappings
+@@ -176,7 +195,19 @@ GameEngine::GameEngine() {
+     // auto wnd = std::make_shared<Fast::Fast3dWindow>(std::vector<std::shared_ptr<Ship::GuiWindow>>({}));
+     // auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetInstance()->GetWindow());
+ 
++#ifdef __EMSCRIPTEN__
++    // Web audio settings. On the browser the game plays through a wasm-memory
++    // ring drained by an AudioWorklet (SDLAudioPlayer.cpp's __EMSCRIPTEN__
++    // path), fed by a time-paced producer thread (HandleAudioThread below).
++    // DesiredBuffered (4400 samples ~= 164ms at 26800Hz) is the ring level the
++    // producer regulates around — enough to ride out worklet/producer
++    // scheduling jitter, small enough that effects don't audibly lag the
++    // action. SampleLength is unused by the ring backend (only the native SDL
++    // device path reads it).
++    this->context->Init({ assets_path }, {}, 3, { 26800, 4096, 4400 }, wnd, controlDeck);
++#else
+     this->context->Init({assets_path}, {}, 3, { 26800, 512, 1100 }, wnd, controlDeck);
++#endif
+ 
+ #ifndef __SWITCH__
+     Ship::Context::GetInstance()->GetLogger()->set_level(
+@@ -310,7 +341,7 @@ extern "C" uint32_t GameEngine_GetInterpolationFrameCount() {
+ }
+ 
+ void GameEngine::ShowMessage(const char* title, const char* message, SDL_MessageBoxFlags type) {
+-#if defined(__SWITCH__)
++#if defined(__SWITCH__) || defined(__EMSCRIPTEN__)
+     SPDLOG_ERROR(message);
+ #else
+     SDL_ShowSimpleMessageBox(type, title, message, nullptr);
+@@ -322,7 +353,9 @@ int GameEngine::ShowYesNoBox(const char* title, const char* box) {
+     int ret;
+ #ifdef _WIN32
+     ret = MessageBoxA(nullptr, box, title, MB_YESNO | MB_ICONQUESTION);
+-#elif defined(__SWITCH__)
++#elif defined(__SWITCH__) || defined(__EMSCRIPTEN__)
++    // No blocking dialogs in the browser: the web page guarantees a ROM is in
++    // place before boot, so first-run extraction should just proceed.
+     SPDLOG_ERROR(box);
+     return IDYES;
+ #else
+@@ -474,7 +507,71 @@ void GameEngine::ProcessGfxCommands(Gfx* pool) {
+ }
+ 
+ // Audio
++#ifdef __EMSCRIPTEN__
++// Set by the first StartAudioFrame(), i.e. the first iteration of the game
++// loop. See the wait at the top of HandleAudioThread.
++static std::atomic<bool> sWebAudioGo{ false };
++#endif
++
+ void GameEngine::HandleAudioThread() {
++#ifdef __EMSCRIPTEN__
++    // Time-paced, decoupled from the render loop. On the web the render loop is
++    // requestAnimationFrame: a frame that slips its vsync slot simply never
++    // produces its audio, and with only ~2% production surplus every missed
++    // slot costs 1.6s of headroom — that deficit, not callback timing, is what
++    // drained the queue during sustained input. The old handshake also made
++    // EndAudioFrame BLOCK the render thread, and on the main browser thread an
++    // emscripten futex wait busy-spins, so heavy audio frames fed back into
++    // frame time.
++    //
++    // The cadence must stay at exactly 30 rounds/s (60 create_next_audio_buffer
++    // calls/s): the sequencer advances tempo per CALL, not per sample, so a
++    // buffer-level-driven loop would run all music ~2% slow. Wall-clock pacing
++    // on this pthread (a real worker; timed sleeps are genuine) keeps tempo
++    // exact regardless of what the main thread is doing.
++    //
++    // It must not start before the game has initialised its audio, though.
++    // This thread is created inside GameEngine::Create(), and main() only
++    // calls audio_init() and loads the track list after that returns. The
++    // native build is safe because its thread sleeps until StartAudioFrame;
++    // free-running, this one could synthesise from an unallocated audio heap
++    // and read the archives while the main thread was still loading from
++    // them. Chromium and Firefox happen to start the worker late enough;
++    // WebKit does not, and aborted on every boot. So wait for the first frame.
++    while (audio.running && !sWebAudioGo.load(std::memory_order_acquire)) {
++        std::this_thread::sleep_for(std::chrono::milliseconds(5));
++    }
++    auto next = std::chrono::steady_clock::now();
++    while (audio.running) {
++        int samples_left = AudioPlayerBuffered();
++        u32 num_audio_samples = samples_left < AudioPlayerGetDesiredBuffered() ? SAMPLES_HIGH : SAMPLES_LOW;
++
++        s16 nas_buffer[SAMPLES_PER_FRAME] = { 0 };
++        f32 hmas_buffer[SAMPLES_PER_FRAME] = { 0 };
++        s16 mix_buffer[SAMPLES_PER_FRAME] = { 0 };
++
++        for (size_t i = 0; i < NUM_AUDIO_CHANNELS; i++) {
++            create_next_audio_buffer(nas_buffer + i * (num_audio_samples * 2), num_audio_samples);
++        }
++
++        GameEngine::Instance->gHMAS->CreateBuffer((u8*)hmas_buffer, 4 * num_audio_samples * sizeof(float));
++
++        float master_vol = CVarGetFloat("gGameMasterVolume", 1.0f);
++
++        for (size_t i = 0; i < SAMPLES_PER_FRAME; i++) {
++            mix_buffer[i] = nas_buffer[i] + ((int16_t)(hmas_buffer[i] * 32767.0f) * master_vol);
++        }
++
++        AudioPlayerPlayFrame((u8*) mix_buffer, 2 * num_audio_samples * 4);
++
++        next += std::chrono::microseconds(33333);
++        auto now = std::chrono::steady_clock::now();
++        if (now - next > std::chrono::milliseconds(250)) {
++            next = now; // fell far behind (breakpoint, suspended tab); resync
++        }
++        std::this_thread::sleep_until(next);
++    }
++#else
+     while (audio.running) {
+         {
+             std::unique_lock<std::mutex> Lock(audio.mutex);
+@@ -512,24 +609,32 @@ void GameEngine::HandleAudioThread() {
+         audio.processing = false;
+         audio.cv_from_thread.notify_one();
+     }
++#endif
+ }
+ 
+ void GameEngine::StartAudioFrame() {
++#ifdef __EMSCRIPTEN__
++    sWebAudioGo.store(true, std::memory_order_release);
++#endif
++#ifndef __EMSCRIPTEN__
+     {
+         std::unique_lock<std::mutex> Lock(audio.mutex);
+         audio.processing = true;
+     }
+ 
+     audio.cv_to_thread.notify_one();
++#endif
+ }
+ 
+ void GameEngine::EndAudioFrame() {
++#ifndef __EMSCRIPTEN__
+     {
+         std::unique_lock<std::mutex> Lock(audio.mutex);
+         while (audio.processing) {
+             audio.cv_from_thread.wait(Lock);
+         }
+     }
++#endif
+ }
+ 
+ void GameEngine::AudioInit() {
+diff --git a/src/port/Engine.h b/src/port/Engine.h
+index d5368a92f..3e9d4df57 100644
+--- a/src/port/Engine.h
++++ b/src/port/Engine.h
+@@ -25,7 +25,20 @@ static const char engine_asset_file[] = "spaghetti.o2r";
+ #define IDNO 7
+ #endif
+ 
++// Audio is produced one frame at a time by the render loop, so a run of slow
++// frames drains the playback queue and the only way back is the surplus in
++// SAMPLES_HIGH. At 448 that surplus was 448*60 = 26880/s against a 26800/s
++// drain — 0.3%, so refilling the queue took the best part of a minute and a
++// brief hitch was audible for ages afterwards. 456 is the largest value that is
++// still safe: synthesis_execute splits the buffer over updatesPerFrame (3)
++// chunks and gives the remainder to the last one, and 3 * samplesPerUpdateMax
++// (152) == 456, so no chunk can exceed what the reverb ring buffer is sized for.
++// That takes the surplus to 2.1% and recovery from ~57s to ~8s.
++#ifdef __EMSCRIPTEN__
++#define SAMPLES_HIGH 456
++#else
+ #define SAMPLES_HIGH 448
++#endif
+ #define SAMPLES_LOW 432
+ #define AUDIO_FRAMES_PER_UPDATE 2
+ #define NUM_AUDIO_CHANNELS 2
+diff --git a/src/port/Game.cpp b/src/port/Game.cpp
+index 74666296d..e4bb90f14 100644
+--- a/src/port/Game.cpp
++++ b/src/port/Game.cpp
+@@ -36,6 +36,12 @@
+ 
+ #ifdef _WIN32
+ #include <locale.h>
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#include <atomic>
++#include <filesystem>
++#include <thread>
++#endif
+ #endif
+ 
+ extern "C" {
+@@ -920,6 +926,37 @@ void push_frame() {
+     // Graphics_ThreadUpdate();w
+ }
+ 
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++static void em_frame(void) {
++    if (WindowIsRunning()) {
++        push_frame();
++    } else {
++        emscripten_cancel_main_loop();
++        CustomEngineDestroy();
++        GameEngine::Instance->Destroy();
++    }
++}
++
++// First-run extraction: see main(). 1 while the thread runs, 2 done, 3 failed.
++static std::atomic<int> sExtractState{ 0 };
++static int kart64_main(int argc, char* argv[]);
++static void em_wait_for_extraction(void) {
++    if (sExtractState.load() == 1) {
++        return;
++    }
++    emscripten_cancel_main_loop();
++    if (sExtractState.load() != 2) {
++        EM_ASM({ if (Module.onExtractionFailed) Module.onExtractionFailed(); });
++        return;
++    }
++    // The archive is written; the file system lives on this thread, so this is
++    // where it is flushed to IndexedDB. Then the real start-up.
++    EM_ASM({ FS.syncfs(false, function(err) {}); });
++    kart64_main(0, nullptr);
++}
++#endif
++
+ void CM_ThrowRuntimeError(const char* fmt, ...) {
+     char error_mesg[2048];
+ 
+@@ -955,6 +992,24 @@ extern "C"
+ #ifdef _WIN32
+     // Allow non-ascii characters for Windows
+     setlocale(LC_ALL, ".UTF8");
++#endif
++#ifdef __EMSCRIPTEN__
++    // Kart64: the first-run asset extraction is a minute of CPU. Run on the
++    // main thread it freezes the tab; so it runs on its own thread while a
++    // main loop keeps the browser responsive (and services the thread's file
++    // system calls, which are proxied to the main thread). The rest of main()
++    // follows once the archive exists. The working directory is the page's
++    // persistent /data, so the check matches the engine's own.
++    if (!std::filesystem::exists("mk64.o2r")) {
++        sExtractState = 1;
++        std::thread([] { sExtractState = GameEngine::GenAssetFile() ? 2 : 3; }).detach();
++        emscripten_set_main_loop(em_wait_for_extraction, 0, 0);
++        return 0;
++    }
++    return kart64_main(argc, argv);
++}
++
++static int kart64_main(int argc, char* argv[]) {
+ #endif
+     // load_wasm();
+     GameEngine::Create();
+@@ -985,11 +1040,19 @@ extern "C"
+ 
+     thread5_game_loop();
+     gEditor.Load();
++#ifdef __EMSCRIPTEN__
++    // The browser owns the event loop: hand it one frame per rAF tick instead
++    // of blocking. Returning is fine, the loop keeps the runtime alive;
++    // shutdown happens in em_frame when the window stops running.
++    emscripten_set_main_loop(em_frame, 0, 0);
++    return 0;
++#else
+     while (WindowIsRunning()) {
+         push_frame();
+     }
+     CustomEngineDestroy();
+     // GameEngine::Instance->ProcessFrame(push_frame);
+     GameEngine::Instance->Destroy();
++#endif
+     return 0;
+ }
+diff --git a/src/port/GameExtractor.cpp b/src/port/GameExtractor.cpp
+index 4e8b4dfae..6c1f9f75f 100644
+--- a/src/port/GameExtractor.cpp
++++ b/src/port/GameExtractor.cpp
+@@ -5,6 +5,9 @@
+ #pragma comment(lib, "Shlwapi.lib")
+ #endif
+ #include "GameExtractor.h"
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#endif
+ #include <cstdio>
+ #include <unordered_map>
+ 
+@@ -186,14 +189,26 @@ std::optional<std::string> GameExtractor::ValidateChecksum() const {
+ }
+ 
+ bool GameExtractor::GenerateOTR() const {
++#ifdef __EMSCRIPTEN__
++    // No /proc/self/exe in wasm: the web page stages torch's recipe
++    // (config.yml, yamls/, meta/) into the working directory.
++    const std::string assets_path = ".";
++    const std::string game_path = ".";
++#else
+     const std::string assets_path = Ship::Context::GetAppBundlePath();
+     const std::string game_path = Ship::Context::GetAppDirectoryPath();
++#endif
+ 
+     Companion::Instance = new Companion(this->mGameData, ArchiveType::O2R, false, assets_path, game_path);
+     Companion::Instance->SetAdditionalFiles({ "meta/mods.toml" });
+ 
+     try {
+         Companion::Instance->Init(ExportType::Binary);
++#ifdef __EMSCRIPTEN__
++        // Torch skips Process() in its Init under Emscripten ("we call this
++        // manually" upstream); drive it explicitly here.
++        Companion::Instance->Process();
++#endif
+     } catch (const std::exception& e) {
+         return false;
+     }
+diff --git a/src/port/kart64_web.cpp b/src/port/kart64_web.cpp
+new file mode 100644
+index 000000000..bb3b08d87
+--- /dev/null
++++ b/src/port/kart64_web.cpp
+@@ -0,0 +1,180 @@
++// Kart64 web bridge: the handful of C entry points the page needs beyond the
++// touch pad (src/main.c). Emscripten only; every function here is exported
++// with EMSCRIPTEN_KEEPALIVE and called from index.html through Module._name.
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#include <SDL2/SDL.h>
++#include <cstdint>
++#include <cstdio>
++#include <cstring>
++
++#include <libultraship.h>
++#include <libultraship/bridge/consolevariablebridge.h>
++
++extern "C" {
++#include "main.h"
++#include "menus.h"
++#include "defines.h"
++#include "code_800029B0.h"
++#include "code_80057C60.h"
++}
++
++extern "C" {
++
++// The page can see these exports as soon as the wasm is instantiated, which is
++// before main() has created the engine. Every entry point that touches the
++// window or the cvar store checks this first, and Kart64_GetState reports it
++// so the page knows when the rest are safe to call.
++static bool Ready(void) {
++    auto ctx = Ship::Context::GetInstance();
++    return ctx != nullptr && ctx->GetWindow() != nullptr;
++}
++
++// --- window ------------------------------------------------------------------
++// The page owns the layout. It sizes the canvas with CSS and tells SDL the
++// new size in CSS pixels; SDL scales by the device pixel ratio (the window has
++// SDL_WINDOW_ALLOW_HIGHDPI) and fires SIZE_CHANGED, which libultraship reads
++// back as the drawable size. Everything downstream — the projection, the
++// HUD edge anchoring, the interpreter's aspect correction — follows the
++// window's aspect each frame, so portrait and widescreen need nothing else.
++EMSCRIPTEN_KEEPALIVE void Kart64_Resize(int32_t w, int32_t h) {
++    if (!Ready()) {
++        return;
++    }
++    SDL_Window* wnd = SDL_GL_GetCurrentWindow();
++    if (wnd != nullptr && w > 0 && h > 0) {
++        SDL_SetWindowSize(wnd, w, h);
++    }
++}
++
++// --- display ------------------------------------------------------------------
++// Typed setters rather than a generic cvar-by-name call, so the page never has
++// to marshal strings into wasm memory.
++
++// The internal-resolution cvar is only read at start-up; the live setter is on
++// the window. 1.0 renders at the drawable size (CSS pixels x DPR), 0.5 at half
++// that on each axis — the lever for fill-rate on a phone.
++EMSCRIPTEN_KEEPALIVE void Kart64_SetResolution(float multiplier) {
++    if (Ready() && multiplier > 0.05f && multiplier <= 2.0f) {
++        Ship::Context::GetInstance()->GetWindow()->SetResolutionMultiplier(multiplier);
++    }
++}
++
++// Portrait camera: additive tweaks read every frame in camera.c. All zero is
++// the stock camera. fovAdd widens the vertical FOV (40 stock); camHeight and
++// camDist move the eye (stock 9.5 up, 50 back; negative dist = further back);
++// lookHeight and lookDist move the point the camera aims at (stock 0, 70).
++EMSCRIPTEN_KEEPALIVE void Kart64_SetCamera(float fovAdd, float camHeight, float camDist, float lookHeight,
++                                          float lookDist) {
++    if (!Ready()) {
++        return;
++    }
++    CVarSetFloat("gKart64.FovAdd", fovAdd);
++    CVarSetFloat("gKart64.CamHeight", camHeight);
++    CVarSetFloat("gKart64.CamDist", camDist);
++    CVarSetFloat("gKart64.LookHeight", lookHeight);
++    CVarSetFloat("gKart64.LookDist", lookDist);
++}
++
++// --- portrait HUD ------------------------------------------------------------
++// The game's HUD is laid out for a 320-unit-wide screen; a portrait phone
++// shows about the middle 110. Rather than hide it and draw a substitute, each
++// group of HUD elements is scaled and re-anchored by the renderer (a tagged
++// G_NOOP the libultraship patch understands), so the original art, slide-ins
++// and animations all survive. A group is { scale, source x, source y in
++// 320x240 coordinates, target x, target y as fractions of the window }.
++enum { HUD_NONE, HUD_LAP, HUD_TIMER, HUD_ITEM, HUD_PORTRAITS, HUD_MINIMAP, HUD_RANK, HUD_COUNT };
++static float sHudGroups[HUD_COUNT][5] = {
++    { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f },
++    { 0.55f, 68.0f, 20.0f, 0.04f, 0.085f },   // LAP n/3: top left
++    { 0.55f, 289.0f, 20.0f, 0.96f, 0.085f },  // TIME and the lap times under it: top right
++    { 0.60f, 160.0f, 18.0f, 0.50f, 0.135f },  // item window: centred under that row
++    { 0.40f, 24.0f, 19.0f, 0.03f, 0.14f },    // rank portraits: down the left (a row of eight at the finish)
++    { 0.60f, 290.0f, 170.0f, 0.97f, 0.44f },  // minimap: right edge, above the buttons
++    { 0.60f, 25.0f, 213.0f, 0.04f, 0.70f },   // placement number: left, above the stick
++};
++// Non-zero while the portrait layout is on. Also read by the HUD draw helpers,
++// which then skip the widescreen edge anchoring (it assumes a wide window).
++int gKart64HudFlat = 0;
++
++EMSCRIPTEN_KEEPALIVE void Kart64_SetHudLayout(int32_t on) {
++    gKart64HudFlat = on ? 1 : 0;
++}
++
++// For tuning on a device (?hud= in the page).
++EMSCRIPTEN_KEEPALIVE void Kart64_SetHudGroup(int32_t id, float scale, float srcX, float srcY, float dstX,
++                                            float dstY) {
++    if (id > HUD_NONE && id < HUD_COUNT) {
++        sHudGroups[id][0] = scale;
++        sHudGroups[id][1] = srcX;
++        sHudGroups[id][2] = srcY;
++        sHudGroups[id][3] = dstX;
++        sHudGroups[id][4] = dstY;
++    }
++}
++
++// Called from the HUD draw code: everything drawn until the next call belongs
++// to this group. 0 ends the grouping.
++void Kart64_HudGroup(int32_t id) {
++    if (!gKart64HudFlat) {
++        return;
++    }
++    Gfx* g = gDisplayListHead++;
++    g->words.w0 = _SHIFTL(G_NOOP, 24, 8) | _SHIFTL(0x4B, 16, 8);
++    g->words.w1 = (id > HUD_NONE && id < HUD_COUNT) ? (uintptr_t) sHudGroups[id] : 0;
++}
++
++// --- state -------------------------------------------------------------------
++// One call per animation frame from the page. Returns a pointer to a fixed
++// int32 array the page reads straight out of HEAP32, so nothing is allocated
++// or marshalled:
++//   [0] gGamestate        [1] gRaceState
++//   [2] gMenuSelection: which of the game's menus is up (gGamestate does not
++//       tell them apart)
++//   [3] rank (0-based)    [4] lap (0-based)    [5] course timer, ms
++//   [6] paused
++//   [7] engine ready (the other exports may be called)
++//   [8] portrait HUD layout is on
++//   [9] the game has its HUD up: the track introduction is over and the
++//       camera is behind the kart
++//   [10] player one's character (0..7)
++//   [11] players chosen on the Game Select screen (always 1 in this build)
++//   [12] player one's drift charge (driftState: 2 or more is a mini-turbo on release)
++//   [13] player one is in a mini-turbo boost (the effect a charged drift fires on release)
++static int32_t sState[14];
++static bool sAutopilot = false;
++EMSCRIPTEN_KEEPALIVE int32_t* Kart64_GetState(void) {
++    Player* p = &gPlayers[0];
++    // Test-only (?autopilot): PLAYER_CPU makes player_controller.c run the AI
++    // path instead of reading the controller, so a harness can finish a race.
++    if (sAutopilot && gGamestate == RACING && (p->type & PLAYER_EXISTS)) {
++        p->type |= PLAYER_CPU;
++    }
++    sState[0] = gGamestate;
++    sState[1] = gRaceState;
++    sState[2] = gMenuSelection;
++    sState[3] = p->currentRank;
++    sState[4] = p->lapCount;
++    sState[5] = (int32_t) (gCourseTimer * 1000.0f);
++    sState[6] = gIsGamePaused ? 1 : 0;
++    sState[7] = Ready() ? 1 : 0;
++    sState[8] = gKart64HudFlat;
++    sState[9] = gIsHUDVisible ? 1 : 0;
++    sState[10] = gCharacterSelections[0];
++    sState[11] = gPlayerCount;
++    sState[12] = p->driftState;
++    sState[13] = (p->effects & 0x100) ? 1 : 0;
++    return sState;
++}
++
++// Test-only: hand the player's kart to the game's own AI. The page calls this
++// for ?autopilot, which the harnesses use to drive real laps headless.
++EMSCRIPTEN_KEEPALIVE void Kart64_SetAutopilot(int32_t on) {
++    sAutopilot = on != 0;
++    if (!sAutopilot) {
++        gPlayers[0].type &= ~PLAYER_CPU; // hand the kart back (a CPU kart cannot pause, for one)
++    }
++}
++
++} // extern "C"
++#endif // __EMSCRIPTEN__
+diff --git a/src/render_objects.c b/src/render_objects.c
+index 54b36625a..7f6089272 100644
+--- a/src/render_objects.c
++++ b/src/render_objects.c
+@@ -52,6 +52,19 @@
+ #include "port/interpolation/FrameInterpolation.h"
+ #include "assets/textures/tracks/sherbet_land/sherbet_land_data.h"
+ 
++#ifdef __EMSCRIPTEN__
++// Kart64: in the portrait HUD layout (src/port/kart64_web.cpp) positions stay
++// in plain 320x240 coordinates and the renderer places each group, so the
++// widescreen edge anchoring below must stand aside.
++extern int gKart64HudFlat;
++#define OTRGetDimensionFromLeftEdge(x) (gKart64HudFlat ? (float) (x) : OTRGetDimensionFromLeftEdge(x))
++#define OTRGetDimensionFromRightEdge(x) (gKart64HudFlat ? (float) (x) : OTRGetDimensionFromRightEdge(x))
++void Kart64_HudGroup(s32 id);
++#define KART64_HUD(id) Kart64_HudGroup(id)
++#else
++#define KART64_HUD(id)
++#endif
++
+ Lights1 D_800E45C0[] = {
+     gdSPDefLights1(100, 0, 0, 100, 0, 0, 0, -120, 0),
+     gdSPDefLights1(100, 100, 0, 255, 255, 0, 0, -120, 0),
+@@ -2684,6 +2697,7 @@ void func_8004EB38(s32 playerId) {
+     hud_player* temp_s0;
+ 
+     temp_s0 = &playerHUD[playerId];
++    KART64_HUD(2); // timer group
+     if ((u8) temp_s0->unk_7B != 0) {
+         func_8004C9D8(temp_s0->lap1CompletionTimeX - 0x13, temp_s0->timerY + 8, 0x00000080,
+                       (u8*) common_texture_hud_time, 0x00000020, 0x00000010, 0x00000020, 0x00000010);
+@@ -2694,6 +2708,7 @@ void func_8004EB38(s32 playerId) {
+                       (u8*) common_texture_hud_time, 0x00000020, 0x00000010, 0x00000020, 0x00000010);
+         func_8004F950((s32) temp_s0->lap2CompletionTimeX, (s32) temp_s0->timerY, 0x00000050, (s32) temp_s0->someTimer);
+     }
++    KART64_HUD(1); // lap group
+     if ((u8) temp_s0->unk_7E != 0) {
+         func_8004C9D8_wide((s32) temp_s0->lapAfterImage1X, temp_s0->lapY + 3, 0x00000080, (u8*) common_texture_hud_lap,
+                            0x00000020, 8, 0x00000020, 8);
+@@ -2708,6 +2723,7 @@ void func_8004EB38(s32 playerId) {
+                            (u8*) gHudLapTextures[temp_s0->alsoLapCount], 0x00000020, 0x00000010, 0x00000020,
+                            0x00000010);
+     }
++    KART64_HUD(0);
+ }
+ 
+ void render_digital_speedometer(s32 playerIdx) {

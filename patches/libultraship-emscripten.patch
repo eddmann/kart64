@@ -1,0 +1,398 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 08cc7915..36e6eb39 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -68,6 +68,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+     include(cmake/dependencies/openbsd.cmake)
+ endif()
+ 
++if(EMSCRIPTEN)
++    include(cmake/dependencies/emscripten.cmake)
++endif()
++
+ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+     include(cmake/dependencies/windows.cmake)
+ endif()
+diff --git a/cmake/dependencies/emscripten.cmake b/cmake/dependencies/emscripten.cmake
+new file mode 100644
+index 00000000..27f24fa3
+--- /dev/null
++++ b/cmake/dependencies/emscripten.cmake
+@@ -0,0 +1,6 @@
++#=================== ImGui ===================
++# SDL2 comes from the emscripten port (headers/libs live in the toolchain
++# sysroot); GLES3 maps to WebGL2.
++target_compile_options(ImGui PUBLIC "--use-port=sdl2")
++target_link_options(ImGui PUBLIC "--use-port=sdl2")
++add_compile_definitions(IMGUI_IMPL_OPENGL_ES3)
+diff --git a/include/fast/interpreter.h b/include/fast/interpreter.h
+index d4b410b8..5128c395 100644
+--- a/include/fast/interpreter.h
++++ b/include/fast/interpreter.h
+@@ -507,6 +507,18 @@ class Interpreter {
+     GfxDimensions mPrvDimensions{};        // gfx_prev_dimensions;
+     XYWidthHeight mGameWindowViewport{};   // gfx_current_game_window_viewport;
+     XYWidthHeight mNativeDimensions{};     // gfx_native_dimensions;
++#ifdef __EMSCRIPTEN__
++    // Kart64: a screen-space remap the game can switch on around a group of
++    // HUD draws, so a HUD laid out for 320x240 can be scaled and re-anchored
++    // in a window of any shape. Set by a tagged G_NOOP (see the handler).
++    // Positions are in NDC: a point at (ax, ay) moves to (dx, dy) and
++    // everything else in the group is scaled by k about it.
++    struct {
++        bool on;
++        float k, ax, ay, dx, dy;
++    } mKart64Remap{};
++    void Kart64SetRemap(const float* params);
++#endif
+     XYWidthHeight mPrevNativeDimensions{}; // gfx_prev_native_dimensions;
+     uintptr_t mGfxFrameBuffer{};
+ 
+diff --git a/include/ship/audio/SDLAudioPlayer.h b/include/ship/audio/SDLAudioPlayer.h
+index ac61dd36..72245c27 100644
+--- a/include/ship/audio/SDLAudioPlayer.h
++++ b/include/ship/audio/SDLAudioPlayer.h
+@@ -51,5 +51,11 @@ class SDLAudioPlayer final : public AudioPlayer {
+   private:
+     SDL_AudioDeviceID mDevice = 0; ///< Handle to the opened SDL audio device.
+     int32_t mNumChannels = 2;      ///< Number of output channels (2 for stereo, 6 for 5.1).
++#ifdef __EMSCRIPTEN__
++    // Web path plays via a SharedArrayBuffer ring drained by an AudioWorklet
++    // instead of SDL's main-thread ScriptProcessorNode (see SDLAudioPlayer.cpp).
++    int16_t* mRing = nullptr;  ///< Interleaved s16 stereo ring in wasm (shared) memory.
++    uint32_t* mCtrl = nullptr; ///< [0] frames written, [1] frames consumed, [2] underrun count.
++#endif
+ };
+ } // namespace Ship
+diff --git a/src/fast/backends/gfx_opengl.cpp b/src/fast/backends/gfx_opengl.cpp
+index fc406528..90a5c9d9 100644
+--- a/src/fast/backends/gfx_opengl.cpp
++++ b/src/fast/backends/gfx_opengl.cpp
+@@ -708,7 +708,7 @@ void GfxRenderingAPIOGL::DrawTriangles(float buf_vbo[], size_t buf_vbo_len, size
+ }
+ 
+ void GfxRenderingAPIOGL::Init() {
+-#if !defined(__linux__) && !defined(__OpenBSD__)
++#if !defined(__linux__) && !defined(__OpenBSD__) && !defined(__EMSCRIPTEN__)
+     glewInit();
+ #endif
+ 
+@@ -987,7 +987,15 @@ void GfxRenderingAPIOGL::CopyFramebuffer(int fb_dst_id, int fb_src_id, int srcX0
+ 
+     glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffers[mCurrentFrameBuffer].fbo);
+ 
++#ifdef __EMSCRIPTEN__
++    // WebGL2 only accepts GL_BACK for the default framebuffer; with an
++    // offscreen one bound this raised INVALID_OPERATION on every frame.
++    if (mCurrentFrameBuffer == 0) {
++        glReadBuffer(GL_BACK);
++    }
++#else
+     glReadBuffer(GL_BACK);
++#endif
+ 
+     if (mLastScissorEnabled != 1) {
+         mLastScissorEnabled = 1;
+diff --git a/src/fast/interpreter.cpp b/src/fast/interpreter.cpp
+index 028c3cc4..7aea787c 100644
+--- a/src/fast/interpreter.cpp
++++ b/src/fast/interpreter.cpp
+@@ -1453,6 +1453,24 @@ void Interpreter::GfxSpPopMatrix(uint32_t count) {
+     mRsp->lights_changed = true;
+ }
+ 
++#ifdef __EMSCRIPTEN__
++// params: { scale, source x, source y (native 320x240 coordinates),
++//           target x, target y (fractions of the window, origin top-left) },
++// or null to switch the remap off.
++void Interpreter::Kart64SetRemap(const float* params) {
++    if (params == nullptr) {
++        mKart64Remap.on = false;
++        return;
++    }
++    mKart64Remap.on = true;
++    mKart64Remap.k = params[0];
++    mKart64Remap.ax = params[1] / (mNativeDimensions.width / 2.0f) - 1.0f;
++    mKart64Remap.ay = 1.0f - params[2] / (mNativeDimensions.height / 2.0f);
++    mKart64Remap.dx = 2.0f * params[3] - 1.0f;
++    mKart64Remap.dy = 1.0f - 2.0f * params[4];
++}
++#endif
++
+ float Interpreter::AdjXForAspectRatio(float x) const {
+     // Skip widescreen adjustment for fixed-size off-screen FBs (HUD elements,
+     // small capture buffers). But resizable FBs (resize=true) are capturing
+@@ -1505,6 +1523,14 @@ void Interpreter::GfxSpVertex(size_t n_vertices, size_t dest_index, const F3DVtx
+             world_pos[2] = v->ob[0] * mtx[0][2] + v->ob[1] * mtx[1][2] + v->ob[2] * mtx[2][2] + mtx[3][2];
+         }
+ 
++#ifdef __EMSCRIPTEN__
++        if (mKart64Remap.on) {
++            // The aspect correction still applies to the scaled offset, so the
++            // group keeps its shape; the target is already in window space.
++            x = AdjXForAspectRatio(mKart64Remap.k * (x - mKart64Remap.ax * w)) + mKart64Remap.dx * w;
++            y = mKart64Remap.k * (y - mKart64Remap.ay * w) + mKart64Remap.dy * w;
++        } else
++#endif
+         x = AdjXForAspectRatio(x);
+ 
+         short U = v->tc[0] * mRsp->texture_scaling_factor.s >> 16;
+@@ -2712,8 +2738,18 @@ void Interpreter::GfxDrawRectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_
+     lrxf = lrxf / (4.0f * HALF_SCREEN_WIDTH(mActiveFrameBuffer)) - 1.0f;
+     lryf = -(lryf / (4.0f * HALF_SCREEN_HEIGHT(mActiveFrameBuffer))) + 1.0f;
+ 
+-    ulxf = AdjXForAspectRatio(ulxf);
+-    lrxf = AdjXForAspectRatio(lrxf);
++#ifdef __EMSCRIPTEN__
++    if (mKart64Remap.on) {
++        ulxf = AdjXForAspectRatio(mKart64Remap.k * (ulxf - mKart64Remap.ax)) + mKart64Remap.dx;
++        lrxf = AdjXForAspectRatio(mKart64Remap.k * (lrxf - mKart64Remap.ax)) + mKart64Remap.dx;
++        ulyf = mKart64Remap.k * (ulyf - mKart64Remap.ay) + mKart64Remap.dy;
++        lryf = mKart64Remap.k * (lryf - mKart64Remap.ay) + mKart64Remap.dy;
++    } else
++#endif
++    {
++        ulxf = AdjXForAspectRatio(ulxf);
++        lrxf = AdjXForAspectRatio(lrxf);
++    }
+ 
+     struct LoadedVertex* ul = &mRsp->loaded_vertices[MAX_VERTICES + 0];
+     struct LoadedVertex* ll = &mRsp->loaded_vertices[MAX_VERTICES + 1];
+@@ -3216,6 +3252,13 @@ bool gfx_noop_handler_f3dex2(F3DGfx** cmd0) {
+     const char* filename = (const char*)(cmd)->words.w1;
+     uint32_t p = C0(16, 8);
+     uint32_t l = C0(0, 16);
++#ifdef __EMSCRIPTEN__
++    // Kart64: G_NOOP tagged 'K' carries a HUD remap (or null) in w1.
++    if (p == 0x4B) {
++        mInstance.lock()->Kart64SetRemap((const float*)(cmd)->words.w1);
++        return false;
++    }
++#endif
+     if (p == 7) {
+         g_exec_stack.openDisp(filename, l);
+     } else if (p == 8) {
+@@ -4773,6 +4816,9 @@ static void gfx_step() {
+ }
+ 
+ void Interpreter::SpReset() {
++#ifdef __EMSCRIPTEN__
++    mKart64Remap.on = false;
++#endif
+     while (!mShaderStack.empty()) {
+         mShaderStack.pop();
+     }
+diff --git a/src/ship/audio/SDLAudioPlayer.cpp b/src/ship/audio/SDLAudioPlayer.cpp
+index d9f1e44d..e4fc5c69 100644
+--- a/src/ship/audio/SDLAudioPlayer.cpp
++++ b/src/ship/audio/SDLAudioPlayer.cpp
+@@ -1,8 +1,178 @@
+ #include "ship/audio/SDLAudioPlayer.h"
+ #include <spdlog/spdlog.h>
++#include <algorithm>
++
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#include <cstdlib>
++#include <cstring>
++#endif
+ 
+ namespace Ship {
+ 
++#ifdef __EMSCRIPTEN__
++// ---------------------------------------------------------------------------
++// Web backend: SharedArrayBuffer ring + AudioWorklet. No SDL audio device.
++//
++// Emscripten's SDL2 audio plays through a ScriptProcessorNode whose callback
++// runs on the browser MAIN thread. Chrome's ScriptProcessorHandler TryLocks a
++// buffer shared with that thread from the real-time audio thread and emits
++// SILENCE whenever the lock is contended — measured during races: sustained
++// key input made Chrome emit silence while SDL's queue was full and its
++// callbacks were on time. That failure is structural to ScriptProcessorNode;
++// no producer-side tuning can fix it.
++//
++// Instead: DoPlay() (called from the audio pthread, a real worker thread that
++// browser main-thread jank cannot touch) writes s16 stereo frames into a ring
++// allocated in wasm memory — which under -pthread IS a SharedArrayBuffer — and
++// an AudioWorkletProcessor running on the browser's real-time audio thread
++// reads straight out of that memory, linear-resampling 26800 -> context rate.
++// The main thread's only involvement is setup.
++//
++// Layout: mCtrl[0] = frames written (monotonic), mCtrl[1] = frames consumed
++// (monotonic, worklet-owned), mCtrl[2] = underrun count.
++// C++ release-stores the write counter after copying samples; the worklet
++// acquire-loads it (JS Atomics are seq-cst, which is at least acquire), so the
++// sample writes are visible before the counter moves. Capacity is a power of
++// two; counters wrap at 2^32 frames (~44h at 26800Hz).
++// ---------------------------------------------------------------------------
++
++static const uint32_t kRingCapFrames = 32768; // ~1.2s at 26800Hz, power of two
++
++SDLAudioPlayer::~SDLAudioPlayer() {
++    DoClose();
++}
++
++void SDLAudioPlayer::DoClose() {
++    EM_ASM({
++        if (Module.__ringAudio) {
++            try { Module.__ringAudio.ctx.close(); } catch (e) {}
++            Module.__ringAudio = null;
++        }
++    });
++    // The worklet may still be draining; leak the ring rather than free memory
++    // it could touch. It is allocated once per process.
++}
++
++bool SDLAudioPlayer::DoInit() {
++    mNumChannels = 2; // web path is stereo
++    mRing = (int16_t*)calloc((size_t)kRingCapFrames * 2, sizeof(int16_t));
++    mCtrl = (uint32_t*)calloc(8, sizeof(uint32_t));
++    if (mRing == nullptr || mCtrl == nullptr) {
++        SPDLOG_ERROR("ring audio: allocation failed");
++        return false;
++    }
++
++    // NB: EM_ASM splits macro arguments on top-level commas (braces do not
++    // protect them), so the entire JS body lives inside an IIFE's parentheses.
++    EM_ASM((function(ringPtr, ctrlPtr, cap, srcRate) {
++        var ctx = new AudioContext({ latencyHint: 'playback' });
++        Module.__ringAudio = { ctx: ctx, node: null, ringPtr: ringPtr, ctrlPtr: ctrlPtr, cap: cap };
++
++        // Autoplay policy: resume on the next user gesture if needed.
++        var resume = function() { if (ctx.state !== 'running') ctx.resume(); };
++        resume();
++        ['pointerdown', 'keydown', 'touchstart'].forEach(function(ev) {
++            document.addEventListener(ev, resume, true);
++        });
++
++        var src =
++            "class RingPlayer extends AudioWorkletProcessor {\n" +
++            "  constructor(o) { super();\n" +
++            "    const d = o.processorOptions;\n" +
++            "    this.sab = d.sab; this.ringOfs = d.ringPtr >> 1; this.ctrlOfs = d.ctrlPtr >> 2;\n" +
++            "    this.cap = d.cap; this.mask = d.cap - 1; this.srcRate = d.srcRate;\n" +
++            "    this.rd = 0; this.started = false; this.len = 0; this.mkViews();\n" +
++            "  }\n" +
++            "  mkViews() { this.h16 = new Int16Array(this.sab); this.c32 = new Uint32Array(this.sab); this.len = this.sab.byteLength; }\n" +
++            "  process(_, outputs) {\n" +
++            "    if (this.sab.byteLength !== this.len) this.mkViews();  // wasm memory grew\n" +
++            "    const o = outputs[0], L = o[0], R = o[1] || o[0], n = L.length;\n" +
++            "    const step = this.srcRate / sampleRate;\n" +
++            "    const w = Atomics.load(this.c32, this.ctrlOfs + 0);\n" +
++            "    if (!this.started) {\n" +
++            "      if (w < 4096) { L.fill(0); if (R !== L) R.fill(0); return true; }  // ~150ms prefill\n" +
++            "      this.started = true; this.rd = w - 4096;\n" +
++            "    }\n" +
++            "    const need = Math.ceil(this.rd + n * step) + 1;\n" +
++            "    if (((w - need) | 0) < 0) {  // wrap-safe signed distance\n" +
++            "      Atomics.add(this.c32, this.ctrlOfs + 2, 1);\n" +
++            "      L.fill(0); if (R !== L) R.fill(0); return true;  // hold position; producer catches up\n" +
++            "    }\n" +
++            "    let rd = this.rd;\n" +
++            "    for (let i = 0; i < n; i++) {\n" +
++            "      const i0 = Math.floor(rd), frac = rd - i0;\n" +
++            "      const a = (i0 & this.mask) * 2, b = ((i0 + 1) & this.mask) * 2;\n" +
++            "      const l0 = this.h16[this.ringOfs + a], l1 = this.h16[this.ringOfs + b];\n" +
++            "      L[i] = (l0 + (l1 - l0) * frac) / 32768;\n" +
++            "      if (R !== L) {\n" +
++            "        const r0 = this.h16[this.ringOfs + a + 1], r1 = this.h16[this.ringOfs + b + 1];\n" +
++            "        R[i] = (r0 + (r1 - r0) * frac) / 32768;\n" +
++            "      }\n" +
++            "      rd += step;\n" +
++            "    }\n" +
++            "    this.rd = rd;\n" +
++            "    Atomics.store(this.c32, this.ctrlOfs + 1, Math.floor(rd) >>> 0);\n" +
++            "    return true;\n" +
++            "  }\n" +
++            "}\n" +
++            "registerProcessor('mk64-ring', RingPlayer);\n";
++
++        var url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
++        ctx.audioWorklet.addModule(url).then(function() {
++            if (!Module.__ringAudio) return; // closed while loading
++            var node = new AudioWorkletNode(ctx, 'mk64-ring', {
++                numberOfInputs: 0,
++                outputChannelCount: [2],
++                processorOptions: { sab: wasmMemory.buffer, ringPtr: ringPtr, ctrlPtr: ctrlPtr, cap: cap, srcRate: srcRate }
++            });
++            node.connect(ctx.destination);
++            Module.__ringAudio.node = node;
++            out('[audio] ring/worklet backend running (' + ctx.sampleRate + 'Hz, state ' + ctx.state + ')');
++        }).catch(function(e) {
++            out('[audio] worklet init failed: ' + e);
++        });
++    })($0, $1, $2, $3), mRing, mCtrl, kRingCapFrames, this->GetSampleRate());
++
++    SPDLOG_INFO("Ring/worklet audio initialized: {} Hz -> browser context", this->GetSampleRate());
++    return true;
++}
++
++int SDLAudioPlayer::Buffered() {
++    if (mCtrl == nullptr) {
++        return 0;
++    }
++    uint32_t w = __atomic_load_n(&mCtrl[0], __ATOMIC_ACQUIRE);
++    uint32_t r = __atomic_load_n(&mCtrl[1], __ATOMIC_ACQUIRE);
++    return (int)(w - r); // frames at the game rate, same unit as the SDL queue path
++}
++
++void SDLAudioPlayer::DoPlay(const uint8_t* buf, size_t len) {
++    if (mRing == nullptr || mCtrl == nullptr) {
++        return;
++    }
++    // Same ceiling policy as the SDL path: don't run away from the reader.
++    if (Buffered() >= std::max(6000, GetDesiredBuffered() * 2)) {
++        return;
++    }
++    const int16_t* src = (const int16_t*)buf;
++    uint32_t frames = (uint32_t)(len / (2 * sizeof(int16_t)));
++    uint32_t w = __atomic_load_n(&mCtrl[0], __ATOMIC_RELAXED);
++    uint32_t r = __atomic_load_n(&mCtrl[1], __ATOMIC_ACQUIRE);
++    uint32_t space = kRingCapFrames - (w - r);
++    if (frames > space) {
++        frames = space; // never lap the reader
++    }
++    for (uint32_t i = 0; i < frames; i++) {
++        uint32_t slot = ((w + i) & (kRingCapFrames - 1)) * 2;
++        mRing[slot] = src[i * 2];
++        mRing[slot + 1] = src[i * 2 + 1];
++    }
++    __atomic_store_n(&mCtrl[0], w + frames, __ATOMIC_RELEASE);
++}
++
++#else // !__EMSCRIPTEN__
++
+ SDLAudioPlayer::~SDLAudioPlayer() {
+     SPDLOG_TRACE("destruct SDL audio player");
+     DoClose();
+@@ -59,4 +229,7 @@ void SDLAudioPlayer::DoPlay(const uint8_t* buf, size_t len) {
+         SDL_QueueAudio(mDevice, buf, len);
+     }
+ }
++
++#endif // __EMSCRIPTEN__
++
+ } // namespace Ship
+diff --git a/src/ship/window/gui/Gui.cpp b/src/ship/window/gui/Gui.cpp
+index 426a965e..3e17f70a 100644
+--- a/src/ship/window/gui/Gui.cpp
++++ b/src/ship/window/gui/Gui.cpp
+@@ -717,6 +717,18 @@ void Gui::DrawGame() {
+     }
+     uintptr_t fb = Ship::Context::GetInstance()->GetWindow()->GetGfxFrameBuffer();
+     if (fb) {
++#ifdef __EMSCRIPTEN__
++        // Kart64: on the web the game viewport is sized in drawable pixels, but
++        // ImGui lays out in CSS pixels and multiplies by the device pixel ratio
++        // when it renders. Without this the framebuffer image (used whenever the
++        // internal resolution differs from the window) is drawn DPR times too
++        // large and only its top-left corner is visible.
++        const ImVec2 fbScale = ImGui::GetIO().DisplayFramebufferScale;
++        if (fbScale.x > 0.0f && fbScale.y > 0.0f) {
++            pos = ImVec2(pos.x / fbScale.x, pos.y / fbScale.y);
++            size = ImVec2(size.x / fbScale.x, size.y / fbScale.y);
++        }
++#endif
+         ImGui::SetCursorPos(pos);
+         ImGui::Image(reinterpret_cast<ImTextureID>(fb), size);
+     }

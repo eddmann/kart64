@@ -1,0 +1,1326 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Kart64</title>
+<!-- Mobile: viewport-fit=cover so the canvas reaches under the notch in
+     landscape; no user scaling, because a pinch mid-race is never intentional.
+     The manifest asks for fullscreen in either orientation -- iPhone honours
+     neither a landscape lock nor the Fullscreen API, so both are supported
+     rather than forced. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#05071a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kart64">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  /* == Kart64 — 1996 Nintendo menu screen. Zero external assets: the type,
+     starfield, rainbow road and checkered flags are all CSS. Palette is
+     N64-era plastic: Mario red, pipe green, star gold, deep space blue. */
+  :root {
+    --red: #e60012;  --red-dk: #8f0009;  --red-hi: #ff5a4e;
+    --gold: #ffc933; --gold-dk: #b8860b; --gold-hi: #ffe28a;
+    --blue: #1560bd; --blue-dk: #0c3a74;
+    --panel: #0c1034; --panel-edge: #2c3d95; --ink: #05071a;
+    --text: #f3f0ff;
+    --display: 'Arial Black', 'Arial Bold', Impact, sans-serif;
+    --body: 'Trebuchet MS', Verdana, sans-serif;
+  }
+  html, body { margin: 0; height: 100%; color: var(--text); font-family: var(--body); }
+  /* iOS 26 Home Screen apps: WebKit sizes the page short of the screen (by the
+     notch's inset), so the page's background stopped short and left a strip
+     at the bottom. Fixed layers already reach the true edge; the document
+     does not. layout() measures the shortfall into --vgap (and the true
+     height into --app-h, for the game) and the document reaches down by it. */
+  html { height: calc(100% + var(--vgap, 0px)); }
+  /* iOS Safari enlarges text when a phone turns to landscape, which blew the
+     start page's notes up past the settings below them. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    background:
+      radial-gradient(1100px 500px at 50% 118%, #23347f 0%, #101643 42%, var(--ink) 100%);
+    background-color: var(--ink);
+    overflow: hidden;
+  }
+  #wrap { display: flex; align-items: center; justify-content: center; height: 100%; }
+  /* SDL writes inline width/height onto the canvas to match the window, which
+     is not 4:3 -- that stretched the picture (squashed tall in portrait, wide
+     in landscape) even though the backing store was correct. Override the
+     inline sizing and letterbox instead: with auto sizing the element takes the
+     backing store's own 4:3 ratio and the max constraints fit it to the box. */
+  canvas { width: auto !important; height: auto !important;
+           max-width: 100%; max-height: 100%;
+           outline: none; }   /* it takes focus for the keyboard; no ring around the picture */
+  /* == Full-screen mode ========================================================
+     The picture fills the viewport and the game renders at the window's own
+     aspect (the page tells SDL the size, see layout()). Only while driving:
+     the game's other screens were drawn for 4:3 and keep that box. */
+  body.full #wrap { height: 100%; padding: 0; align-items: center; }
+  body.full canvas { width: 100vw !important; height: var(--app-h, 100dvh) !important;
+                     max-width: none; max-height: none; }
+
+  /* The starfield and rainbow road are menu dressing. They are fixed layers,
+     so once the overlay is gone they would twinkle on top of the race. */
+  body:has(#overlay.hidden) .stars, body:has(#overlay.hidden) .road { display: none; }
+
+  /* == Touch controls =========================================================
+     The game is 4:3, so one axis always has space left over: in portrait a band
+     below the picture, in landscape a pillarbox gutter each side. Controls live
+     in that leftover space and never cover the race.
+
+     Every size below derives from the screen's short axis, so both orientations
+     produce the same physical button and it scales across devices instead of
+     being tuned to one phone. */
+  body.touch {
+    --short: min(100vw, 100vh);
+    --primary: calc(var(--short) * .30);    /* DRIFT, GO -- held for long runs */
+    --secondary: calc(var(--short) * .18);  /* ITEM, BRAKE -- tapped */
+    --stick: calc(var(--short) * .40);
+    --gap: calc(var(--short) * .04);
+    background: var(--ink);
+  }
+  /* GO joins the stack when auto-accelerate is off, and landscape has to find
+     the height from somewhere. */
+  body.touch #touch.manual { --primary: calc(var(--short) * .26); }
+
+  #touch { position: fixed; inset: 0; z-index: 40; touch-action: none;
+           user-select: none; -webkit-user-select: none; pointer-events: none; }
+  #touch.hidden { display: none; }
+  #touch > * { pointer-events: auto; }
+  body.touch #overlay { z-index: 60; }        /* the overlay still wins while shown */
+
+  /* --- steering -------------------------------------------------------------
+     The zone catches a touch anywhere in its half; the ring only says where to
+     rest a thumb. Pointer capture keeps a drag tracking after it leaves the
+     zone, so the ring never has to be chased. */
+  #steer { position: absolute; left: 0; bottom: 0; }
+  #steerbase { position: absolute; left: 50%; transform: translateX(-50%);
+               width: var(--stick); height: var(--stick); border-radius: 50%;
+               border: 3px solid #ffffff26; transition: opacity .15s;
+               background: radial-gradient(circle at 50% 38%, #ffffff16, #ffffff06 62%, transparent 72%); }
+  #steerbase::after { content: ''; position: absolute; inset: 34%;
+                      border-radius: 50%; background: #ffffff1c; }
+  #steer.on #steerbase { opacity: .3; }
+  /* The menu deck's D-pad takes the ring's place (every rule that positions
+     #steerbase names #dpadbase too). */
+  #dpadbase { position: absolute; left: 50%; transform: translateX(-50%);
+              width: var(--stick); height: var(--stick);
+              display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
+  #dpadbase .tbtn { width: auto; height: auto; border-radius: 24%;
+                    font-size: calc(var(--stick) * .17); }
+  #d-up { grid-area: 1 / 2; } #d-left { grid-area: 2 / 1; }
+  #d-right { grid-area: 2 / 3; } #d-down { grid-area: 3 / 2; }
+  #steerdot { position: absolute; width: calc(var(--stick) * .45); height: calc(var(--stick) * .45);
+              border-radius: 50%; border: 3px solid var(--gold); transform: translate(-50%, -50%);
+              background: rgba(255,201,51,.16); opacity: 0; transition: opacity .12s;
+              box-shadow: 0 0 18px rgba(255,201,51,.35); }
+  #steer.on #steerdot { opacity: 1; }
+  #steerhint { position: absolute; left: 50%; transform: translateX(-50%);
+               font-family: var(--display); font-size: .78rem; letter-spacing: .08em;
+               color: var(--gold); opacity: .55; text-align: center; line-height: 1.5;
+               transition: opacity .25s; pointer-events: none; white-space: nowrap; }
+  #steerhint small { font-family: var(--body); font-size: .6rem; letter-spacing: 0;
+                     color: var(--text); opacity: .7; }
+  #steer.used #steerhint { opacity: 0; }
+
+  /* --- buttons -------------------------------------------------------------- */
+  #pads { position: absolute; right: 0; bottom: 0; }
+  .tbtn { font-family: var(--display); letter-spacing: .04em; color: var(--text);
+          background: linear-gradient(#3a4bb5, var(--panel));
+          border: 3px solid var(--panel-edge); border-radius: 999px;
+          display: grid; place-items: center; text-align: center; padding: 0;
+          touch-action: none; -webkit-tap-highlight-color: transparent;
+          box-shadow: inset 0 2px 0 #ffffff2c; }
+  /* The menu's button:hover carries a red drop shadow and outranks .tbtn on
+     specificity -- and iOS keeps :hover after a tap, so every pressed button
+     kept a red rim permanently. Pin the interactive states instead. */
+  .tbtn:hover, .tbtn:active, .tbtn:focus {
+    box-shadow: inset 0 2px 0 #ffffff2c; transform: none; filter: none; }
+  .tbtn.held { filter: brightness(1.5) !important; transform: scale(.95) !important; }
+  .tbtn[data-bit] { width: var(--secondary); height: var(--secondary);
+                    font-size: calc(var(--short) * .032); }
+  #t-r, #t-a, #m-a { width: var(--primary); height: var(--primary);
+               font-size: calc(var(--short) * .042); }
+  #t-r { background: linear-gradient(#59d1ff, #0c4a74); border-color: #2f9fd0; }
+  #t-a, #m-a { background: linear-gradient(var(--red-hi), var(--red-dk)); border-color: var(--red); }
+  #t-a.autohidden { display: none; }
+  /* A button's second line says what it does ("A / OK"). */
+  .tbtn small { display: block; max-width: none; padding: 0; background: none; color: inherit;
+                font-family: var(--body); font-weight: 700; font-size: .4em; letter-spacing: .1em;
+                line-height: 1.3; opacity: .9; }
+  #m-a, #m-b { align-content: center; line-height: 1; }
+  #m-a { font-size: calc(var(--short) * .085); }
+  #m-b { font-size: calc(var(--short) * .06); }
+
+  /* == Two decks ==============================================================
+     Racing: stick, DRIFT, ITEM, BRAKE (and GO with auto-accelerate off).
+     Menus -- the title, the game's menus, pause, results, anything that is not
+     driving: a D-pad, A and B, and L, R and START, named as the game's own
+     prompts name them. body.menu says which; the script sets it. The menu
+     buttons share the racing buttons' slots (A where DRIFT is, B where ITEM
+     is), so every layout below places both decks. */
+  body.menu #steerbase, body.menu #steerhint, body.menu #steerdot,
+  body.menu #t-r, body.menu #t-z, body.menu #t-b, body.menu #t-a,
+  body.menu .race-only { display: none !important; }
+  body:not(.menu) #dpadbase, body:not(.menu) #m-a, body:not(.menu) #m-b,
+  body:not(.menu) .menu-only { display: none !important; }
+
+  /* == Tour mode ==============================================================
+     Mario Kart Tour's one-thumb scheme as an alternative racing deck: the whole
+     screen is the stick (drag anywhere to steer), a fast flick that keeps
+     holding is a drift, and a swipe up or down throws the item. No buttons,
+     so it needs none of the space the pads deck does. It is portrait only
+     (landscape keeps the pads) and there it is always full screen while
+     driving (the FULL switch hides), as in the game it is named after. The
+     menu deck is shared and carries the switch (CTRL): the racing row has no
+     room for another button, and it is set once, so the pause menu will do. */
+  #tour { position: fixed; inset: 0; touch-action: none; }
+  body:not(.tour) #tour, body.menu #tour,
+  body.tour:not(.menu) #steer, body.tour:not(.menu) #pads,
+  body.tour #t-auto, body.tour #t-full { display: none !important; }
+  #tourdot { position: absolute; width: calc(var(--stick) * .5); height: calc(var(--stick) * .5);
+             border-radius: 50%; border: 3px solid #ffffff55; transform: translate(-50%, -50%);
+             background: #ffffff10; opacity: 0; transition: opacity .12s, border-color .15s; pointer-events: none; }
+  #tour.on #tourdot { opacity: 1; }
+  #tour.drift #tourdot { border-color: var(--gold); background: rgba(255,201,51,.16);
+                         box-shadow: 0 0 18px rgba(255,201,51,.35); }
+  #tourhint { position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%);
+              font-family: var(--display); font-size: .78rem; letter-spacing: .08em; line-height: 1.7;
+              color: var(--gold); opacity: .55; text-align: center; white-space: nowrap;
+              transition: opacity .25s; pointer-events: none; }
+  #tourhint small { font-family: var(--body); font-size: .6rem; letter-spacing: 0; color: var(--text); opacity: .7; }
+  body:not(.tour) #tourhint, body.menu #tourhint, #tour.used ~ #tourhint { display: none; }
+
+  /* Settings sit far from the thumbs on purpose: set once, not mid-race. Two
+     groups, one for each top corner, so they can sit side by side in
+     portrait, stack in a landscape gutter, or meet at the bottom centre. */
+  .tset { position: absolute; top: .6rem; display: flex; gap: .4rem; }
+  #tset-l { left: max(.6rem, env(safe-area-inset-left)); align-items: flex-start; }
+  #tset-r { right: max(.8rem, env(safe-area-inset-right)); align-items: flex-end; }
+  .tbtn.tiny { width: auto; height: auto; padding: .45rem .7rem; white-space: nowrap;
+               font-size: clamp(.5rem, 2.6vw, .62rem); opacity: .75; }
+
+  /* Full-screen: there is no leftover space, so the controls overlay the lower
+     corners of the picture, shrunk and translucent. Landscape moves the action
+     buttons clear of the minimap; the 4:3 letterbox layouts stay for menus. */
+  body.touch.full { --primary: calc(var(--short) * .22); --secondary: calc(var(--short) * .14);
+                    --stick: calc(var(--short) * .30); }
+  body.touch.full #touch { top: 0; background: none; border: 0; }
+  body.touch.full #touch .tbtn { opacity: .62; }
+  body.touch.full #touch .tbtn.held { opacity: .95; }
+  body.touch.full #steer { width: 45%; height: 100%; }
+  body.touch.full #steerbase, body.touch.full #dpadbase { width: var(--stick); height: var(--stick); bottom: 7%; }
+  body.touch.full #steerhint { bottom: calc(7% + var(--stick) + var(--gap) * .5); }
+  body.touch.full #pads { width: 55%; height: 100%; display: block;
+                          bottom: max(var(--gap), env(safe-area-inset-bottom)); }
+  /* The placements carry #pads so they outrank both the landscape-gutter rule
+     below (body.touch #pads > .tbtn, which resets right/bottom for its grid)
+     and the generic rule here. Without it every button fell back to the top
+     of #pads and they sat stacked on one another. */
+  /* The settings row keeps the top edge, inset for the notch, which the
+     full-screen picture now runs under. The game's HUD sits just below it. */
+  body.touch.full .tset { top: calc(env(safe-area-inset-top) + .6rem); }
+  /* Landscape keeps the game's own HUD, which owns the top edge (rank
+     portraits, lap, timer), so the settings row drops to the bottom centre,
+     under the kart, where there is only road. */
+  @media (orientation: landscape) {
+    body.touch.full .tset { top: auto; bottom: max(.5rem, env(safe-area-inset-bottom)); flex-direction: row; }
+    body.touch.full #tset-l { left: auto; right: calc(50% + .2rem); }
+    body.touch.full #tset-r { right: auto; left: calc(50% + .2rem); }
+  }
+  body.touch.full #pads > .tbtn { position: absolute; }
+  body.touch.full #pads > #t-r, body.touch.full #pads > #m-a { right: var(--gap); bottom: 0; }
+  body.touch.full #pads > #t-a { right: var(--gap); bottom: calc(var(--primary) + var(--gap) * .7); }
+  body.touch.full #pads > #t-z, body.touch.full #pads > #m-b { right: calc(var(--gap) * 1.9 + var(--primary)); bottom: calc(var(--gap) * .5); }
+  body.touch.full #pads > #t-b { right: calc(var(--gap) * 1.9 + var(--primary));
+                                 bottom: calc(var(--secondary) + var(--gap) * 1.4); }
+  @media (orientation: landscape) {
+    /* The minimap occupies the right edge of the game's landscape HUD. Keep
+       the action deck beside it and low on the screen; keep its left edge at
+       45% so its empty hit area does not take touches from the steering zone. */
+    body.touch.full #pads {
+      right: calc(var(--short) * .25);
+      width: calc(55% - var(--short) * .25);
+    }
+  }
+  /* On shorter landscape layouts the inner ITEM button shares the settings
+     row's horizontal space, so give it just enough height to clear that row. */
+  @media (orientation: landscape) and (max-aspect-ratio: 2/1) {
+    body.touch.full #pads {
+      bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + 1.75rem);
+    }
+  }
+
+  /* Portrait: a full-width 4:3 picture is exactly 75vw tall, so the deck starts
+     there and splits left/right -- stick one side, buttons the other. Both sit
+     inside the bottom third, which is all a thumb comfortably reaches on a
+     phone this tall; the band above gets the hint and nothing that must be hit
+     in a hurry. Buttons are placed absolutely rather than gridded: a grid left
+     an L-shaped hole when GO came and went, which is what read as ragged. */
+  @media (orientation: portrait) {
+    body.touch #wrap { height: calc(75vw + env(safe-area-inset-top));
+                       align-items: flex-start; padding-top: env(safe-area-inset-top); }
+    body.touch #touch { top: calc(75vw + env(safe-area-inset-top));
+      background: linear-gradient(#0a0e2e, var(--ink)); border-top: 3px solid var(--panel-edge); }
+    body.touch #steer { width: 45%; height: 100%; }
+    body.touch #steerbase, body.touch #dpadbase { bottom: calc(var(--gap) * 1.5); }
+    body.touch #steerhint { bottom: calc(var(--gap) * 1.5 + var(--stick) + var(--gap) * .6); }
+    body.touch #pads { width: 55%; height: 100%;
+                       bottom: max(var(--gap), env(safe-area-inset-bottom)); }
+    body.touch #pads > .tbtn { position: absolute; }
+    /* Primaries in the outer column, secondaries inboard: when GO hides, DRIFT
+       stays exactly where the thumb left it and nothing else shifts. */
+    #t-r, #m-a { right: var(--gap); bottom: 0; }
+    #t-a { right: var(--gap); bottom: calc(var(--primary) + var(--gap) * .7); }
+    #t-z, #m-b { right: calc(var(--gap) * 1.9 + var(--primary)); bottom: calc(var(--gap) * .5); }
+    #t-b { right: calc(var(--gap) * 1.9 + var(--primary));
+           bottom: calc(var(--secondary) + var(--gap) * 1.4); }
+  }
+  /* Landscape: gutters each side of a height-limited picture. Stick in the left,
+     buttons stacked in the right. A grid here, because a vertical stack has no
+     hole to leave -- a hidden GO simply collapses its row. */
+  /* Only when the screen is wider than 4:3 is there a pillarbox to put controls
+     in. On a 4:3 tablet the gutter is zero, and a floor value would have parked
+     them on top of the picture -- so that case keeps the portrait treatment of
+     placing them over the letterbox instead. */
+  @media (orientation: landscape) and (min-aspect-ratio: 26/19) {
+    body.touch { --gut: calc((100vw - 133.334vh) / 2); }
+    body.touch .tset { flex-direction: column; }
+    body.touch #steer { width: var(--gut); height: 100%; }
+    body.touch #steerbase, body.touch #dpadbase { width: min(var(--stick), calc(var(--gut) - var(--gap)));
+                            height: min(var(--stick), calc(var(--gut) - var(--gap)));
+                            bottom: 14%; }
+    body.touch #steerhint { bottom: calc(14% + min(var(--stick), calc(var(--gut) - var(--gap))) + var(--gap) * .5); }
+    body.touch #pads { width: var(--gut); height: auto;
+                       display: grid; gap: calc(var(--gap) * .55);
+                       grid-auto-flow: row; justify-items: center; align-content: end;
+                       bottom: max(var(--gap), env(safe-area-inset-bottom)); }
+    body.touch #pads > .tbtn { position: relative; right: auto; bottom: auto; }
+    #t-b { order: 1; } #t-z, #m-b { order: 2; } #t-a { order: 3; } #t-r, #m-a { order: 4; }
+  }
+  /* 4:3 or squarer in landscape (an iPad): the picture fills the screen and
+     there is no gutter to hide in, so the controls overlay its lower corners
+     instead -- and shrink, because a tablet's short axis is large enough that
+     the standard fractions would give absurd buttons. */
+  @media (orientation: landscape) and (max-aspect-ratio: 26/19) {
+    body.touch { --primary: calc(var(--short) * .20); --secondary: calc(var(--short) * .12);
+                 --stick: calc(var(--short) * .26); }
+    body.touch #steer { width: 34%; height: 100%; }
+    body.touch #steerbase, body.touch #dpadbase { bottom: 6%; }
+    body.touch #steerhint { bottom: calc(6% + var(--stick) + var(--gap) * .5); }
+    body.touch #pads { width: 46%; height: 100%;
+                       bottom: max(var(--gap), env(safe-area-inset-bottom)); }
+    body.touch #pads > .tbtn { position: absolute; }
+    #t-r, #m-a { right: var(--gap); bottom: 0; }
+    #t-a { right: var(--gap); bottom: calc(var(--primary) + var(--gap) * .7); }
+    #t-z, #m-b { right: calc(var(--gap) * 1.9 + var(--primary)); bottom: calc(var(--gap) * .5); }
+    #t-b { right: calc(var(--gap) * 1.9 + var(--primary));
+           bottom: calc(var(--secondary) + var(--gap) * 1.4); }
+  }
+
+  /* -- starfield + rainbow road (fixed decor behind the overlay) -------------- */
+  .stars, .stars::after {
+    content: ''; position: fixed; inset: 0; pointer-events: none;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 22%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 28% 64%, #fff 50%, transparent 51%),
+      radial-gradient(2px 2px at 37% 12%, var(--gold-hi) 50%, transparent 51%),
+      radial-gradient(1px 1px at 46% 42%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 58% 18%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 66% 56%, #cfd8ff 50%, transparent 51%),
+      radial-gradient(2px 2px at 75% 30%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 84% 70%, var(--gold-hi) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 92% 14%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 8% 82%, #cfd8ff 50%, transparent 51%);
+    animation: twinkle 4s ease-in-out infinite;
+  }
+  .stars::after {
+    transform: translate(3vw, 6vh) scale(1.4); opacity: .5;
+    animation-delay: -2s;
+  }
+  @keyframes twinkle { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+  .road { position: fixed; left: -6vw; right: -6vw; bottom: 3vh; height: 16px;
+    pointer-events: none; transform: rotate(-2.2deg);
+    background: linear-gradient(90deg, #ff2d2d, #ff9a1f, #ffe11f, #35d435, #2bc6ff, #4d5bff, #c43dff, #ff2d2d);
+    background-size: 200% 100%;
+    border-top: 2px solid #fff8; border-bottom: 2px solid #fff8;
+    box-shadow: 0 0 22px #6a7dff88, 0 0 60px #4d5bff44;
+    animation: roadflow 9s linear infinite;
+  }
+  .road::after { content: ''; position: absolute; inset: -26px 0 auto 0; height: 6px;
+    background: inherit; background-size: 200% 100%; opacity: .35; filter: blur(1px);
+    animation: roadflow 9s linear infinite reverse; }
+  @keyframes roadflow { to { background-position: -200% 0; } }
+
+  /* -- overlay ---------------------------------------------------------------- */
+  #overlay {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start; gap: 1.1rem;
+    text-align: center; padding: 2rem; background: transparent;
+    overflow-y: auto;
+  }
+  #overlay.hidden { display: none; }
+  /* Centred when it fits, scrollable from the top when it does not. Plain
+     justify-content: center on an overflowing column pushes the top of the
+     content above the scroll origin, where it cannot be reached -- which is
+     what a phone in landscape did to the marquee and the first row. */
+  #overlay > :first-child { margin-top: auto; }
+  #overlay > :last-child { margin-bottom: auto; }
+  #overlay::before { /* subtle CRT scanlines over menu screens */
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 3;
+    background: repeating-linear-gradient(transparent 0 2px, rgba(0,0,0,.14) 2px 3px);
+    mix-blend-mode: multiply;
+  }
+  /* Never shrink to fit: the Game Pak clips its contents, so on a short
+     screen it was squashed until the file picker inside it disappeared. The
+     column scrolls instead. */
+  #overlay > * { z-index: 4; flex-shrink: 0; }
+
+  /* -- the marquee ------------------------------------------------------------ */
+  .marquee { user-select: none; animation: drop .55s cubic-bezier(.2, 1.6, .4, 1) both; }
+  @keyframes drop { from { transform: translateY(-70px) scale(.8); opacity: 0; } }
+  .marquee .row { display: flex; align-items: baseline; justify-content: center; gap: .12em; }
+  /* Checkered strips either side of the title, sized to the screen so they
+     still fit beside it on a narrow phone. */
+  .checker { align-self: center; flex: none; margin: 0 clamp(.4rem, 2vw, 1.1rem);
+    width: clamp(26px, 8vw, 74px); height: clamp(8px, 2.2vw, 12px); border: 1px solid #000;
+    background: repeating-conic-gradient(#f5f5f5 0 25%, #14141c 0 50%) 0 0 / clamp(8px, 2.2vw, 12px) clamp(8px, 2.2vw, 12px); }
+  .t-kart, .t-64 {
+    font-family: var(--display); font-weight: 900; line-height: .9;
+    letter-spacing: -.02em; transform: scaleY(1.14);
+  }
+  .t-kart {
+    font-size: clamp(3rem, 9vw, 5.2rem); color: var(--gold);
+    background: linear-gradient(180deg, var(--gold-hi) 18%, var(--gold) 46%, #e09a00 72%, var(--gold-dk));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    filter:
+      drop-shadow(2px 0 0 #7a1600) drop-shadow(-2px 0 0 #7a1600)
+      drop-shadow(0 2px 0 #7a1600) drop-shadow(0 -2px 0 #7a1600)
+      drop-shadow(4px 6px 0 #40080066);
+  }
+  .t-64 {
+    font-size: clamp(3.9rem, 11.7vw, 6.8rem); color: var(--red);
+    background: linear-gradient(180deg, #ff7a6d 15%, var(--red) 50%, var(--red-dk));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    filter:
+      drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)
+      drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
+      drop-shadow(5px 7px 0 #40080066);
+  }
+
+  /* -- buttons: molded plastic ------------------------------------------------ */
+  button {
+    font-family: var(--display); font-weight: 900; text-transform: uppercase;
+    font-size: 1.05rem; letter-spacing: .06em; color: #fff; cursor: pointer;
+    padding: .7rem 1.9rem; border: 2px solid #0008; border-radius: 12px;
+    background: linear-gradient(180deg, var(--red-hi), var(--red) 55%, var(--red-dk));
+    text-shadow: 0 2px 0 #0008;
+    box-shadow: 0 5px 0 var(--red-dk), 0 9px 0 #000a, inset 0 2px 0 #ffffff42;
+    transition: transform .07s, box-shadow .07s, filter .12s;
+  }
+  button:hover { filter: brightness(1.12); transform: translateY(-1px);
+    box-shadow: 0 6px 0 var(--red-dk), 0 10px 0 #000a, inset 0 2px 0 #ffffff42; }
+  button:active { transform: translateY(4px);
+    box-shadow: 0 1px 0 var(--red-dk), 0 3px 0 #000a, inset 0 2px 0 #ffffff2c; }
+  #start { font-size: 1.5rem; padding: .9rem 3rem; }
+  button.quiet { font-size: .7rem; padding: .45rem .9rem; opacity: .7; letter-spacing: .1em;
+    background: linear-gradient(180deg, #4d8ede, var(--blue) 55%, var(--blue-dk));
+    box-shadow: 0 4px 0 var(--blue-dk), 0 7px 0 #000a, inset 0 2px 0 #ffffff42; }
+  button.quiet:hover { box-shadow: 0 5px 0 var(--blue-dk), 0 8px 0 #000a, inset 0 2px 0 #ffffff42; }
+  button.quiet:active { box-shadow: 0 1px 0 var(--blue-dk), 0 3px 0 #000a, inset 0 2px 0 #ffffff2c; }
+
+  /* -- Game Pak drop zone ----------------------------------------------------- */
+  #drop { border: 0; padding: 0; max-width: 26rem; overflow: hidden;
+    background: linear-gradient(180deg, #aab0b9, #878d97 40%, #6d737d);
+    border-radius: 10px 10px 18px 18px;
+    box-shadow: 0 8px 0 #000c, inset 0 3px 0 #ffffff55, inset 0 -6px 0 #0003; }
+  #drop::before { content: ''; display: block; height: 14px; margin: 10px 26% 0;
+    background: repeating-linear-gradient(90deg, #5d636d 0 7px, #7b818b 7px 14px);
+    border-radius: 4px; }
+  #drop p { margin: 1rem 1.4rem .6rem; background: #14141c; color: var(--text);
+    border: 3px solid #2b2b36; border-radius: 8px; padding: 1.1rem 1rem;
+    font-weight: 700; }
+  #drop p::before { content: 'INSERT GAME PAK'; display: block;
+    font-family: var(--display); letter-spacing: .3em; text-indent: .3em;
+    color: var(--gold); font-size: .85rem; margin-bottom: .5rem; }
+  #drop.armed p { border-color: var(--gold); box-shadow: 0 0 16px #ffc93355; }
+  #drop input { margin: 0 1.4rem 1.2rem; font-family: var(--body); font-weight: 400;
+    color: #dfe3ff; font-size: .8rem; background: #070a22;
+    border: 2px dashed var(--panel-edge); border-radius: 10px; padding: .55rem .8rem;
+    width: calc(100% - 2.8rem); box-sizing: border-box; }
+  input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+  /* -- status + blurb --------------------------------------------------------- */
+  #status { color: var(--gold-hi); font-style: italic; font-weight: 700; min-height: 1.4em;
+    text-shadow: 0 1px 0 #000; max-width: 40rem; }
+  #status.bad { color: var(--red-hi); font-style: normal; }
+  small { color: #9aa2d4; max-width: 44rem; line-height: 1.45;
+    background: #05071ac9; border-radius: 8px; padding: .45rem .8rem; }
+  small b { color: #dfe3ff; }
+  kbd { font-family: var(--display); font-size: .7rem; color: var(--gold);
+    background: #070a22; border: 1px solid var(--panel-edge); border-radius: 4px;
+    padding: .05rem .35rem; }
+  .row-tools { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: center; }
+  /* A pack's file name can be long: one line, cut short, the full name on hover. */
+  #packbtn { max-width: min(24rem, 86vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Keep each key with what it does, so a line never breaks between them. */
+  #keys .k { white-space: nowrap; }
+  /* The ROM picker's own button, in the page's style rather than the browser's. */
+  #drop input::file-selector-button {
+    font-family: var(--display); font-weight: 900; text-transform: uppercase; letter-spacing: .08em;
+    font-size: .7rem; color: #fff; cursor: pointer; margin-right: .7rem;
+    padding: .4rem .8rem; border: 2px solid #0008; border-radius: 8px;
+    background: linear-gradient(180deg, #4d8ede, var(--blue) 55%, var(--blue-dk));
+    box-shadow: 0 3px 0 var(--blue-dk), inset 0 2px 0 #ffffff42; text-shadow: 0 1px 0 #0008; }
+  /* A phone on its side is short: everything shrinks to fit above the fold,
+     rather than leave the settings below it for a scroll nobody makes, and
+     the sides clear the notch. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    #overlay { gap: .5rem; padding: .7rem max(1.2rem, env(safe-area-inset-right)) .7rem max(1.2rem, env(safe-area-inset-left)); }
+    .t-kart { font-size: clamp(2rem, 11vh, 3.2rem); }
+    .t-64 { font-size: clamp(2.6rem, 14.3vh, 4.2rem); }
+    .checker { width: 44px; height: 9px; background-size: 9px 9px; }
+    #start { font-size: 1.15rem; padding: .55rem 2.4rem; }
+    small { font-size: .72rem; padding: .3rem .7rem; max-width: 52rem; }
+    #status { min-height: 1.2em; }
+    #drop p { margin: .6rem 1rem .4rem; padding: .55rem .8rem; }
+    #drop input { margin: 0 1rem .8rem; width: calc(100% - 2rem); }
+  }
+  .hidden { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stars, .stars::after, .road, .road::after { animation: none; }
+    .marquee { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<div class="road"></div>
+<div id="wrap"><canvas id="canvas" width="960" height="720" tabindex="0"></canvas></div>
+<!-- Touch controls. Hidden until the game is running on a touch device (or
+     ?touch to force them on a desktop browser for layout work). -->
+<div id="touch" class="hidden">
+  <div id="tour"><div id="tourdot"></div></div>
+  <div id="tourhint">DRAG TO STEER<br><small>flick and hold to drift · swipe up or down to throw</small></div>
+  <div id="steer"><div id="steerhint">STEER<br><small>touch anywhere</small></div><div id="steerbase"></div><div id="steerdot"></div>
+    <div id="dpadbase">
+      <button class="tbtn" id="d-up" data-bit="2048" aria-label="Up">▲</button>
+      <button class="tbtn" id="d-left" data-bit="512" aria-label="Left">◀</button>
+      <button class="tbtn" id="d-right" data-bit="256" aria-label="Right">▶</button>
+      <button class="tbtn" id="d-down" data-bit="1024" aria-label="Down">▼</button>
+    </div></div>
+  <div id="pads">
+    <button class="tbtn" id="t-z" data-bit="8192">ITEM</button>
+    <button class="tbtn" id="t-b" data-bit="16384">BRAKE</button>
+    <button class="tbtn big" id="t-r" data-bit="16">DRIFT</button>
+    <button class="tbtn big" id="t-a" data-bit="32768">GO</button>
+    <button class="tbtn" id="m-b" data-bit="16384">B<small>BACK</small></button>
+    <button class="tbtn big" id="m-a" data-bit="32768">A<small>OK</small></button>
+  </div>
+  <div class="tset" id="tset-l">
+    <button class="tbtn tiny race-only" id="t-sens">STEER: HIGH</button>
+    <button class="tbtn tiny menu-only" id="m-l" data-bit="32">L</button>
+    <button class="tbtn tiny menu-only" id="m-r" data-bit="16">R</button>
+    <button class="tbtn tiny" id="t-full">FULL: ON</button>
+    <button class="tbtn tiny menu-only" id="t-ctrl">CTRL: PADS</button>
+  </div>
+  <div class="tset" id="tset-r">
+    <button class="tbtn tiny race-only" id="t-auto">AUTO: ON</button>
+    <button class="tbtn tiny" id="t-start" data-bit="4096">START</button>
+  </div>
+</div>
+<div id="overlay">
+  <div class="marquee">
+    <div class="row"><i class="checker"></i><span class="t-kart">KART</span><span class="t-64">64</span><i class="checker"></i></div>
+  </div>
+  <button id="start" class="hidden">Start</button>
+  <div id="drop" class="hidden">
+    <p><b>Drop your US Mario Kart 64 ROM here</b><br>(.z64 / .n64 / .v64)</p>
+    <input type="file" id="file" accept=".z64,.n64,.v64">
+  </div>
+  <div id="status"></div>
+  <small id="blurb">Your ROM never leaves this device: it is verified and converted
+  locally, the game's assets are extracted in your browser and cached in browser
+  storage. Nothing is uploaded. <b>First run takes about a minute</b>; later visits
+  boot instantly.</small>
+  <small id="keys" class="hidden"><span class="k"><kbd>arrows</kbd> or <kbd>WASD</kbd> steer</span> ·
+  <span class="k"><kbd>X</kbd> accelerate</span> · <span class="k"><kbd>C</kbd> brake</span> ·
+  <span class="k"><kbd>Z</kbd> item</span> · <span class="k"><kbd>Space</kbd> hop / drift</span> ·
+  <span class="k"><kbd>Enter</kbd> Start</span> · <span class="k"><kbd>F</kbd> full screen</span> ·
+  <span class="k">gamepads work too</span></small>
+  <div class="row-tools">
+    <button id="fullpref" class="quiet">Full screen: on</button>
+    <button id="packbtn" class="quiet">Texture pack: none</button>
+    <button id="packoff" class="quiet hidden">Remove pack</button>
+    <input type="file" id="packfile" hidden>
+    <button id="reset" class="quiet hidden">Clear cached game data</button>
+  </div>
+  <small>Not affiliated with or endorsed by Nintendo. Built from the
+  <a href="https://github.com/HarbourMasters/SpaghettiKart" style="color:#dfe3ff">SpaghettiKart</a>
+  decompilation port, compiled to WebAssembly.</small>
+</div>
+<script>
+const ROM_SHA1 = '579c48e211ae952530ffc8738709f078d5dd215e';
+const qp = new URLSearchParams(location.search);
+const onLocalhost = ['localhost', '127.0.0.1'].includes(location.hostname);
+const overlay = document.getElementById('overlay');
+const statusEl = document.getElementById('status');
+const dropEl = document.getElementById('drop');
+const startBtn = document.getElementById('start');
+const resetBtn = document.getElementById('reset');
+const say = (t, bad) => {
+  statusEl.textContent = t;
+  statusEl.classList.toggle('bad', !!bad);
+  console.log('[page] ' + t);
+};
+
+// --- capability gate ---------------------------------------------------------
+// The build is pthreads + SharedArrayBuffer, which only exists on a
+// cross-origin-isolated secure page. Without the gate a plain-http LAN address
+// or a browser that cannot be isolated fails silently deep inside the wasm
+// loader. Say what is wrong instead.
+//
+// Isolation needs two response headers (COOP and COEP). A host that sends
+// them is isolated on the first load. One that cannot -- GitHub Pages -- is
+// isolated by a service worker that adds them (coi-sw.js): register it,
+// reload once so this page comes back through it, and carry on. The
+// sessionStorage flag stops that ever becoming a reload loop.
+const isolated = self.crossOriginIsolated && typeof SharedArrayBuffer !== 'undefined';
+const COI_TRIED = 'k64.coi';
+function selfIsolate() {
+  if (isolated) { sessionStorage.removeItem(COI_TRIED); return false; }
+  if (!isSecureContext || !('serviceWorker' in navigator) || sessionStorage.getItem(COI_TRIED)) return false;
+  sessionStorage.setItem(COI_TRIED, '1');
+  say('Preparing…');
+  // Whatever happens -- it registers, it is refused, or the browser never
+  // answers -- reload: either the page comes back isolated, or the flag sends
+  // it to the message below.
+  const gaveUp = new Promise(r => setTimeout(r, 8000));
+  Promise.race([navigator.serviceWorker.register('coi-sw.js').then(() => navigator.serviceWorker.ready), gaveUp])
+    .catch(() => {})
+    .then(() => location.reload());
+  return true;
+}
+function gate() {
+  if (!isolated) {
+    return !isSecureContext
+      ? 'This page must be served over HTTPS (a plain-http LAN address is not a secure context, so the game cannot start).'
+      : 'This browser could not give the game the isolated page it needs: the host does not send the ' +
+        'Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy headers, and the service worker that ' +
+        'stands in for them could not run (a private window, or service workers switched off).';
+  }
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    if (!gl) return 'WebGL2 is not available in this browser.';
+  } catch (e) { return 'WebGL2 is not available in this browser.'; }
+  if (typeof AudioWorkletNode === 'undefined') return 'This browser has no AudioWorklet, which the game uses for sound.';
+  return null;
+}
+const isolating = selfIsolate();
+const problem = isolating ? null : gate();
+if (isolating) {
+  // about to reload through the service worker; nothing to offer yet
+} else if (problem) {
+  say(problem, true);
+} else {
+  startBtn.classList.remove('hidden');
+  if (!(navigator.maxTouchPoints > 0)) document.getElementById('keys').classList.remove('hidden');
+}
+
+// Deleting the IDBFS database is a complete reset: extracted assets, config
+// and saves. It needs no wasm, so it works even when a corrupt cache stops the
+// game booting -- which is exactly when it is needed.
+indexedDB.databases?.().then(dbs => {
+  if (dbs.some(d => d.name === '/data')) resetBtn.classList.remove('hidden');
+}).catch(() => {});
+resetBtn.onclick = () => {
+  if (!confirm('Delete the extracted game data, settings and saves from this browser? You will need to drop the ROM again.')) return;
+  const req = indexedDB.deleteDatabase('/data');
+  req.onsuccess = req.onerror = req.onblocked = () => { say('Cleared. Reloading…'); location.reload(); };
+};
+
+// == Texture packs ===========================================================
+// The engine loads every .o2r / .zip in /data/mods when it starts
+// (src/engine/mods/ModManager.cpp), and a pack's textures replace the game's
+// own, at whatever resolution the pack has. Like the ROM, a pack is the
+// player's own file: the page never fetches or serves one.
+//
+// A pack is big (MK64 Reloaded's HD build is 444 MB), and a phone has little
+// memory to spare. So it is not kept in the game's file system storage, which
+// would copy it through memory into one IndexedDB record on every save, but
+// in a store of its own as the picked file itself, which the browser keeps on
+// disk. At start-up it is read into memory once and handed to the game's
+// file system without a copy; /data/mods is left out of that storage's sync.
+const packBtn = document.getElementById('packbtn');
+const packOff = document.getElementById('packoff');
+const packFile = document.getElementById('packfile');
+let pendingPack = null, removePack = false, installedPack = null;
+const showPack = () => {
+  const name = pendingPack ? pendingPack.name : removePack ? null : installedPack;
+  packBtn.textContent = 'Texture pack: ' + (name ? name.replace(/\.(o2r|zip)$/i, '') : 'none');
+  packBtn.title = name || '';
+  packOff.classList.toggle('hidden', !name);
+};
+const idb = (name, upgrade) => new Promise((res, rej) => {
+  const r = indexedDB.open(name, 1);
+  r.onupgradeneeded = () => upgrade?.(r.result);
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+});
+const packDB = () => idb('kart64-packs', db => db.createObjectStore('pack'));
+const packTx = async (mode, fn) => {
+  const db = await packDB();
+  try {
+    return await new Promise((res, rej) => {
+      const tx = db.transaction('pack', mode), req = fn(tx.objectStore('pack'));
+      tx.oncomplete = () => res(req.result); tx.onerror = tx.onabort = () => rej(tx.error);
+    });
+  } finally { db.close(); }
+};
+const getPack = () => packTx('readonly', st => st.get('current'));
+packTx('readonly', st => st.getKey('current')).then(k => {
+  if (k) getPack().then(p => { installedPack = p?.name || null; showPack(); });
+}).catch(() => {});
+// An earlier build kept packs in the game's own storage; drop any such copy.
+indexedDB.databases?.().then(dbs => {
+  if (!dbs.some(d => d.name === '/data')) return;
+  const r = indexedDB.open('/data');
+  r.onsuccess = () => {
+    const db = r.result;
+    if (!db.objectStoreNames.contains('FILE_DATA')) return db.close();
+    const st = db.transaction('FILE_DATA', 'readwrite').objectStore('FILE_DATA');
+    st.getAllKeys().onsuccess = e => { for (const k of e.target.result) if (/^\/data\/mods(\/|$)/.test(k)) st.delete(k); };
+    st.transaction.oncomplete = () => db.close();
+  };
+}).catch(() => {});
+// No accept filter on the input: iOS only enables file types it has a
+// system type for, and .o2r has none, so it greyed every pack out. The
+// file is checked here instead: the right extension, and a zip inside.
+packBtn.onclick = () => packFile.click();
+packFile.onchange = async () => {
+  const f = packFile.files[0];
+  packFile.value = '';
+  if (!f) return;
+  const head = new Uint8Array(await f.slice(0, 2).arrayBuffer());
+  if (!/\.(o2r|zip)$/i.test(f.name) || head[0] !== 0x50 || head[1] !== 0x4b) {
+    say('That is not a texture pack: pick an .o2r or .zip made for SpaghettiKart.', true);
+    return;
+  }
+  say('');
+  pendingPack = f; removePack = false; showPack();
+};
+packOff.onclick = () => { pendingPack = null; removePack = true; showPack(); };
+showPack();
+// Setup: save or drop the pack chosen on the start page, then load the
+// current one into /data/mods. A pack that cannot be saved or read is
+// reported and skipped; the game starts without it.
+async function installPack() {
+  try {
+    if (removePack) await packTx('readwrite', st => st.delete('current'));
+    if (pendingPack) {
+      say('Saving the texture pack…');
+      await packTx('readwrite', st => st.put({ name: pendingPack.name.replace(/[^\w.-]/g, '_'), file: pendingPack }, 'current'));
+    }
+  } catch (e) {
+    say('Could not save the texture pack (' + (e?.message || e) + '); starting without it.', true);
+    await new Promise(r => setTimeout(r, 4000));
+  }
+  pendingPack = null; removePack = false;
+  if (!FS.analyzePath('/data/mods').exists) FS.mkdir('/data/mods');
+  const pack = await getPack().catch(() => null);
+  if (!pack) return;
+  try {
+    say('Loading the texture pack…');
+    FS.writeFile('/data/mods/pack-' + pack.name, new Uint8Array(await pack.file.arrayBuffer()), { canOwn: true });
+  } catch (e) {
+    try { FS.unlink('/data/mods/pack-' + pack.name); } catch (e2) {}
+    say('Could not load the texture pack (' + (e?.message || e) + '); starting without it. Remove it on the start page.', true);
+    await new Promise(r => setTimeout(r, 4000));
+  }
+}
+
+// .n64 (little-endian, word-swapped) / .v64 (byte-swapped) -> .z64 (native)
+function toZ64(buf) {
+  const d = new Uint8Array(buf);
+  const magic = (d[0] << 24 | d[1] << 16 | d[2] << 8 | d[3]) >>> 0;
+  if (magic === 0x80371240) return d;                       // z64
+  const out = new Uint8Array(d.length);
+  if (magic === 0x37804012) {                               // v64: swap pairs
+    for (let i = 0; i < d.length; i += 2) { out[i] = d[i+1]; out[i+1] = d[i]; }
+    return out;
+  }
+  if (magic === 0x40123780) {                               // n64: reverse words
+    for (let i = 0; i < d.length; i += 4) {
+      out[i] = d[i+3]; out[i+1] = d[i+2]; out[i+2] = d[i+1]; out[i+3] = d[i];
+    }
+    return out;
+  }
+  return null;
+}
+async function sha1hex(bytes) {
+  const h = await crypto.subtle.digest('SHA-1', bytes);
+  return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function waitForRom() {
+  return new Promise(resolve => {
+    dropEl.classList.remove('hidden');
+    say('Waiting for ROM…');
+    async function handle(file) {
+      const z64 = toZ64(await file.arrayBuffer());
+      if (!z64) { say('Not an N64 ROM (unknown byte order).', true); return; }
+      const hash = await sha1hex(z64);
+      if (hash !== ROM_SHA1) { say('Wrong ROM: need the US version (SHA-1 mismatch).', true); return; }
+      dropEl.classList.add('hidden');
+      detach();
+      resolve(z64);
+    }
+    // Window-level so a drop anywhere on the page counts, which means they have
+    // to be taken back off again: left armed, the zone keeps glowing after a
+    // drag leaves, and left attached, a file dropped on the canvas mid-race
+    // would re-hash a whole ROM on the main thread.
+    const onDragOver = e => { e.preventDefault(); dropEl.classList.add('armed'); };
+    const onDragLeave = e => { if (!e.relatedTarget) dropEl.classList.remove('armed'); };
+    const onDrop = e => {
+      e.preventDefault();
+      dropEl.classList.remove('armed');
+      e.dataTransfer.files[0] && handle(e.dataTransfer.files[0]);
+    };
+    const detach = () => {
+      removeEventListener('dragover', onDragOver);
+      removeEventListener('dragleave', onDragLeave);
+      removeEventListener('drop', onDrop);
+      document.getElementById('file').onchange = null;
+    };
+    document.getElementById('file').onchange = e => e.target.files[0] && handle(e.target.files[0]);
+    addEventListener('dragover', onDragOver);
+    addEventListener('dragleave', onDragLeave);
+    addEventListener('drop', onDrop);
+  });
+}
+const fetchInto = async (name) => {
+  const r = await fetch(name);
+  if (!r.ok) throw new Error(name + ': HTTP ' + r.status);
+  FS.writeFile('/data/' + name, new Uint8Array(await r.arrayBuffer()));
+};
+// The .data preload bundle carries torch's extraction recipe at /torch;
+// mirror it into the persistent working dir the game runs from.
+function waitForPreload() {
+  return new Promise(res => {
+    const t = setInterval(() => {
+      if (FS.analyzePath('/torch/config.yml').exists) { clearInterval(t); res(); }
+    }, 100);
+  });
+}
+function copyTree(src, dst) {
+  FS.analyzePath(dst).exists || FS.mkdir(dst);
+  for (const name of FS.readdir(src)) {
+    if (name === '.' || name === '..') continue;
+    const s = src + '/' + name, d = dst + '/' + name;
+    if (FS.isDir(FS.stat(s).mode)) copyTree(s, d);
+    else FS.writeFile(d, FS.readFile(s));
+  }
+}
+// `?perf` overlay: live frame time plus the audio ring's fill level and
+// underrun count (audio plays through a wasm-memory ring drained by an
+// AudioWorklet — see SDLAudioPlayer.cpp in the libultraship patch).
+if (qp.has('perf')) (function () {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;left:6px;top:6px;z-index:9999;font:12px/1.45 ui-monospace,Menlo,monospace;' +
+    'background:rgba(0,0,0,.82);color:#7CFC7C;padding:7px 10px;border-radius:6px;white-space:pre;pointer-events:none';
+  document.body.appendChild(el);
+  let last = performance.now(), frames = 0, worstFrame = 0;
+  requestAnimationFrame(function tick(now) {
+    const d = now - last; last = now;
+    if (d > worstFrame) worstFrame = d;
+    frames++;
+    requestAnimationFrame(tick);
+  });
+  let hooked = false, ringBase = 0;
+  const heap = () => (typeof HEAPU32 !== 'undefined') ? HEAPU32 : null;
+  const tryHook = () => {
+    const RA = window.Module && Module.__ringAudio;
+    if (hooked || !RA || !heap()) return;
+    ringBase = RA.ctrlPtr >> 2;
+    hooked = true;
+  };
+  let winFrames = 0, winStart = performance.now();
+  setInterval(() => {
+    tryHook();
+    const now = performance.now();
+    const secs = (now - winStart) / 1000;
+    const fps = (frames - winFrames) / secs;
+    winFrames = frames; winStart = now;
+    const H = heap();
+    const fill = hooked && H ? (H[ringBase] - H[ringBase + 1]) : 0;
+    const under = hooked && H ? H[ringBase + 2] : 0;
+    const mem = (typeof HEAPU8 !== 'undefined') ? (HEAPU8.length / 1048576).toFixed(0) + 'MB' : '?';
+    window.__perf = { fps: +fps.toFixed(1), worstFrame: +worstFrame.toFixed(0),
+                      ringFill: fill, underruns: under };
+    const st = (typeof readState === 'function') ? readState() : null;
+    el.textContent =
+      'fps        ' + fps.toFixed(1) + '   worst frame ' + worstFrame.toFixed(0) + 'ms   mem ' + mem + '\n' +
+      (st ? 'state      gamestate ' + st.gamestate + '  race ' + st.race + '  rank ' + (st.rank + 1) + '  lap ' + st.lap +
+            '  full ' + document.body.classList.contains('full') + '  canvas ' + canvas.width + 'x' + canvas.height + '\n' : '') +
+      (hooked ? 'audio ring ' + fill + ' samples (' + (fill / 26.8).toFixed(0) + 'ms)   underruns ' + under
+              : 'audio      waiting for ring backend');
+    worstFrame = 0;
+  }, 500);
+})();
+let runtimeReady = false, extracting = 0;
+var Module = {
+  canvas: document.getElementById('canvas'),
+  // Fires after preRun completes (i.e. after the ROM step), just before main().
+  // Exports exist as soon as the wasm is instantiated, but calling one before
+  // this aborts the runtime; and the engine itself (window, cvars) only exists
+  // a little later, which Kart64_GetState reports in its ready word.
+  onRuntimeInitialized: () => { runtimeReady = true; },
+  print: t => console.log('[stdout] ' + t),
+  printErr: t => console.log('[stderr] ' + t),
+  onExtractionFailed: () => {
+    clearInterval(extracting);
+    resetBtn.classList.remove('hidden');
+    say('The extraction failed. Clear the cached game data and try the ROM again.', true);
+  },
+  onAbort: what => {
+    clearInterval(extracting);
+    overlay.classList.remove('hidden');
+    startBtn.classList.add('hidden');
+    resetBtn.classList.remove('hidden');
+    say('The game stopped: ' + what + '. Reload to try again, or clear the cached data if it keeps happening.', true);
+  },
+  preRun: [function() {
+    addRunDependency('setup');
+    FS.mkdir('/data');
+    // /data/mods holds the texture pack, which is stored on its own (see
+    // installPack), so the file system's storage sync leaves it out.
+    for (const fn of ['getLocalSet', 'getRemoteSet']) {
+      const real = IDBFS[fn];
+      IDBFS[fn] = (mount, cb) => real(mount, (err, set) => {
+        if (set) for (const k of Object.keys(set.entries)) if (/^\/data\/mods(\/|$)/.test(k)) delete set.entries[k];
+        cb(err, set);
+      });
+    }
+    FS.mount(IDBFS, {}, '/data');
+    FS.syncfs(true, async () => {
+      FS.chdir('/data');
+      try {
+        const have = n => FS.analyzePath('/data/' + n).exists;
+        if (!have('config.yml')) {
+          say('Preparing extraction recipe…');
+          await waitForPreload();
+          FS.writeFile('/data/config.yml', FS.readFile('/torch/config.yml'));
+          copyTree('/torch/yamls', '/data/yamls');
+          copyTree('/torch/meta', '/data/meta');
+        }
+        if (!have('spaghetti.o2r')) { say('Fetching base assets…'); await fetchInto('spaghetti.o2r'); }
+        await installPack();
+        // Dev shortcut, localhost only: a build dir that already holds an
+        // mk64.o2r (from the ExtractAssets target) can be booted with
+        // ?prebuilt and no ROM drop. It is ignored on any other origin, so a
+        // deployed site can never serve extracted assets by accident.
+        if (!have('mk64.o2r') && qp.has('prebuilt') && onLocalhost) {
+          say('Fetching prebuilt assets (dev)…');
+          await fetchInto('mk64.o2r');
+        }
+        if (!have('mk64.o2r')) {
+          if (!have('baserom.us.z64')) FS.writeFile('/data/baserom.us.z64', await waitForRom());
+          // The game extracts on a thread of its own and the page stays
+          // responsive, so the start page can stay up and keep count until
+          // the engine reports in (see the state loop).
+          const t0 = performance.now();
+          extracting = setInterval(() => say('Extracting the game\'s assets in your browser… ' + Math.round((performance.now() - t0) / 1000) + 's'), 1000);
+          say('Extracting the game\'s assets in your browser…');
+        } else {
+          say('Booting from cached assets…');
+          overlay.classList.add('hidden');
+        }
+        // Persist config/saves/extracted assets. (Not in postRun: with
+        // emscripten_set_main_loop(simulate_infinite_loop=1) main never
+        // returns, so postRun never fires.) Once the archive exists the ROM
+        // has done its job and is deleted, so browser storage holds only the
+        // extracted assets, never the ROM itself.
+        const sync = () => {
+          if (have('mk64.o2r') && have('baserom.us.z64')) {
+            try { FS.unlink('/data/baserom.us.z64'); } catch (e) {}
+          }
+          FS.syncfs(false, () => {});
+        };
+        setTimeout(sync, 20000);
+        setInterval(sync, 15000);
+        addEventListener('visibilitychange', () => document.hidden && sync());
+        removeRunDependency('setup');
+      } catch (e) { say('Setup failed: ' + e.message, true); resetBtn.classList.remove('hidden'); }
+    });
+  }],
+};
+startBtn.onclick = () => {
+  startBtn.classList.add('hidden');
+  resetBtn.classList.add('hidden');
+  packBtn.classList.add('hidden'); packOff.classList.add('hidden');
+  document.getElementById('fullpref').classList.add('hidden');
+  document.getElementById('keys').classList.add('hidden');
+  // Ask for durable storage from inside the click, where browsers are most
+  // willing to grant it. iOS only keeps IndexedDB for installed web apps.
+  navigator.storage?.persist?.().then(ok => {
+    if (!ok && /iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone) {
+      document.getElementById('blurb').innerHTML =
+        'On iPhone, <b>add this page to your Home Screen</b> and launch it from there: ' +
+        'Safari deletes cached game data for ordinary tabs, so you would extract again on every visit.';
+    }
+  }).catch(() => {});
+  const s = document.createElement('script');
+  s.src = 'Spaghettify.js';
+  s.onerror = () => { say('Could not load Spaghettify.js — is the build next to this page?', true); startBtn.classList.remove('hidden'); };
+  document.body.appendChild(s);
+};
+
+// == Layout ===================================================================
+// SDL sizes its canvas to whatever the page asks for (Kart64_Resize, in CSS
+// pixels; SDL multiplies by the device pixel ratio).
+//
+// Full screen is a setting: on by default on a touch device, off on a desktop,
+// ?full=1/0 to force it. Off, the picture is always the largest 4:3 box and
+// the touch controls take the space left over. On, the picture is full screen
+// while driving, in either orientation, and the 4:3 box otherwise: the game's
+// menus, track introduction, pause menu and results screens were drawn for
+// 4:3. A tall window would crop them to their middle third, and a wide one
+// only adds black bars that the menu deck can use.
+const canvas = document.getElementById('canvas');
+const touchDevice = navigator.maxTouchPoints > 0 || qp.has('touch');
+let fullPref = (qp.get('full') ?? localStorage.getItem('k64.full') ?? (touchDevice ? '1' : '0')) === '1';
+// Tour mode (the one-thumb racing deck, see the touch section) applies in
+// portrait, and there it is always full screen while driving; landscape
+// keeps the pads deck and the setting.
+window.tourMode = (qp.get('ctrl') ?? localStorage.getItem('k64.ctrl')) === 'tour';
+const fullBtns = [document.getElementById('fullpref'), document.getElementById('t-full')];
+const syncFull = () => {
+  fullBtns[0].textContent = 'Full screen: ' + (fullPref ? 'on' : 'off');
+  fullBtns[1].textContent = 'FULL: ' + (fullPref ? 'ON' : 'OFF');
+};
+const setFull = on => {
+  fullPref = on;
+  localStorage.setItem('k64.full', on ? '1' : '0');
+  syncFull(); layout();
+};
+for (const b of fullBtns) b.addEventListener('click', () => setFull(!fullPref));
+// Desktop: F is full screen, in both senses -- the browser's, so the page
+// takes the whole display, and the setting, so the picture fills it while
+// driving. Leaving the browser's full screen (Esc) turns the setting back
+// off. The key is swallowed so the game does not also see it as C-left.
+addEventListener('keydown', e => {
+  if (e.code !== 'KeyF' || e.repeat || e.altKey || e.ctrlKey || e.metaKey || touchDevice) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); setFull(false); }
+  else { document.documentElement.requestFullscreen?.().catch(() => {}); setFull(true); }
+}, true);
+addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && !touchDevice && fullPref) setFull(false); });
+let racing = false, driving = false, lastW = 0, lastH = 0;
+// The iOS 26 Home Screen shortfall (see --vgap in the CSS). Only in an iOS
+// Home Screen app (navigator.standalone) and only when the page spans the
+// screen's full width, so a desktop app window, Android, iPad split view or
+// a Safari tab never get it. Then the true height is the screen's.
+function viewportGap(cw, ch) {
+  if (navigator.standalone !== true) return 0;
+  const short = Math.min(screen.width, screen.height), long = Math.max(screen.width, screen.height);
+  const portrait = matchMedia('(orientation: portrait)').matches;
+  if (cw !== (portrait ? short : long)) return 0;
+  const gap = (portrait ? long : short) - ch;
+  return gap > 0 && gap < 150 ? gap : 0;
+}
+function layout() {
+  const de = document.documentElement, gap = viewportGap(de.clientWidth, de.clientHeight);
+  const W = de.clientWidth, H = de.clientHeight + gap;
+  de.style.setProperty('--vgap', gap + 'px');
+  de.style.setProperty('--app-h', H + 'px');
+  const portrait = H > W;
+  const tour = window.tourMode && portrait;
+  document.body.classList.toggle('tour', tour);
+  const full = (fullPref || tour) && driving;
+  document.body.classList.toggle('full', full);
+  let w = W, h = H;
+  if (!full) { w = Math.min(W, Math.floor(H * 4 / 3)); h = Math.round(w * 3 / 4); }   // the largest 4:3 box
+  if (engineReady && (w !== lastW || h !== lastH)) {
+    Module._Kart64_Resize(w, h); lastW = w; lastH = h;
+  }
+  return portrait;
+}
+syncFull();
+let engineReady = false;
+addEventListener('resize', layout);
+addEventListener('orientationchange', () => setTimeout(layout, 150));
+layout();
+
+// == Game state loop ============================================================
+// Reads Kart64_GetState once per frame: drives the layout switch, the portrait
+// camera and HUD, and auto-accelerate.
+// ?cam=fov,h,d,lh,ld and ?res=0.5 override the portrait camera and the render
+// resolution for tuning on a device.
+const CAM = (qp.get('cam') || '35,5,-15,2,0').split(',').map(Number);
+const RES = +(qp.get('res') || (navigator.maxTouchPoints > 0 ? 0.5 : 1));
+const RACE_FINISHED = 5, RACING = 4;
+// ?hud=id,scale,srcX,srcY,dstX,dstY;... overrides a portrait HUD group for
+// tuning on a device (the groups and their defaults are in kart64_web.cpp).
+const HUD = (qp.get('hud') || '').split(';').map(g => g.split(',').map(Number)).filter(g => g.length === 6 && g.every(Number.isFinite));
+let camOn = null, hudOn = null, resOn = false, pilotOn = false, autoOn = null, finishedAt = 0;
+const RESULTS_AFTER = 4000;   // ms after the line before the game's results screens take over
+window.autoAccelWanted = (localStorage.getItem('k64.auto') ?? '1') === '1';
+function readState() {
+  if (!runtimeReady || !Module._Kart64_GetState || typeof HEAP32 === 'undefined') return null;
+  const o = Module._Kart64_GetState() >> 2;
+  if (!HEAP32[o + 7]) return null;   // engine not up yet
+  engineReady = true;
+  return { gamestate: HEAP32[o], race: HEAP32[o + 1], rank: HEAP32[o + 3], lap: HEAP32[o + 4],
+           paused: HEAP32[o + 6], hudUp: HEAP32[o + 9] };
+}
+(function loop() {
+  requestAnimationFrame(loop);
+  const st = readState();
+  if (!st) return;
+  if (extracting) { clearInterval(extracting); extracting = 0; say(''); overlay.classList.add('hidden'); }
+  if (!resOn && RES !== 1) { Module._Kart64_SetResolution(RES); resOn = true; }
+  if (document.title !== 'Kart64') document.title = 'Kart64';   // SDL renames the tab after the port
+  // Test-only: ?autopilot hands the kart to the game's AI so a harness can
+  // finish a race (tests/race-test.mjs).
+  if (!pilotOn && qp.has('autopilot')) { Module._Kart64_SetAutopilot(1); pilotOn = true; }
+  racing = st.gamestate === RACING;
+  // Driving is the grid, the race, and the few seconds the kart coasts on
+  // after the line. The track introduction before it (the game brings its
+  // HUD up when that ends), the pause menu and the results screens after it
+  // are the game's own 4:3 layouts, so portrait shows those letterboxed.
+  // (Race states past FINISHED are the game's own follow-ups, such as the
+  // RETRY / QUIT choice below fourth place: never driving.)
+  const over = racing && st.race >= RACE_FINISHED;
+  if (over && !finishedAt) finishedAt = performance.now();
+  if (!over) finishedAt = 0;
+  const results = over && (st.race > RACE_FINISHED || performance.now() - finishedAt > RESULTS_AFTER);
+  driving = racing && st.hudUp && !results && !st.paused;
+  window.setDeck?.(!driving);
+  const portrait = layout();
+  // Full-screen portrait driving: wider FOV, higher camera...
+  const tour = window.tourMode && portrait;   // Tour is portrait only, and full screen there
+  const wantCam = (fullPref || tour) && driving && portrait;
+  if (wantCam !== camOn) {
+    camOn = wantCam;
+    if (wantCam) Module._Kart64_SetCamera(CAM[0], CAM[1], CAM[2], CAM[3], CAM[4]);
+    else Module._Kart64_SetCamera(0, 0, 0, 0, 0);
+  }
+  // ...and the game's own HUD, regrouped to fit the narrow window.
+  if (wantCam !== hudOn) {
+    hudOn = wantCam;
+    if (hudOn) for (const g of HUD) Module._Kart64_SetHudGroup(...g);
+    Module._Kart64_SetHudLayout(hudOn ? 1 : 0);
+  }
+  const wantAuto = (window.autoAccelWanted || tour) && touchDevice;   // Tour has no GO button
+  if (wantAuto !== autoOn) { autoOn = wantAuto; Module._Kart64_SetAutoAccel(wantAuto ? 1 : 0); }
+})();
+// == Touch controls ===========================================================
+// Writes the pad straight into the game via Kart64_SetTouchPad (see the
+// __EMSCRIPTEN__ block in src/main.c). Synthetic key events were the other
+// option and would have given binary steering; MK64's stick is analog and
+// drifting depends on holding a partial angle, so the direct pad it is.
+(function () {
+  const touchable = navigator.maxTouchPoints > 0 || qp.has('touch');
+  if (!touchable) return;
+  const el = document.getElementById('touch');
+  const steer = document.getElementById('steer');
+  const dot = document.getElementById('steerdot');
+  const autoBtn = document.getElementById('t-auto');
+  const aBtn = document.getElementById('t-a');
+  const DEAD = 5;
+  // Steering sensitivity = stick units per pixel of thumb travel, so both knobs
+  // move together: a smaller radius reaches lock sooner, a higher max turns
+  // harder once there. 80 is roughly N64 hardware range; above that is beyond
+  // what a real stick could ask for, which is why MAX exists but is not default.
+  const SENS = [
+    { name: 'LOW',  radius: 75, max: 80 },
+    { name: 'MED',  radius: 60, max: 80 },
+    { name: 'HIGH', radius: 45, max: 100 },
+    { name: 'MAX',  radius: 34, max: 127 },
+  ];
+  // Clamped, not trusted: a corrupt value used to throw during init, which took
+  // the whole IIFE down with it -- no observer, no controls, for the session.
+  // A missing key must not be coerced either: +null is 0, which made LOW the
+  // default on every fresh install.
+  const rawSens = localStorage.getItem('k64.sens');
+  const storedSens = rawSens === null ? NaN : Math.trunc(+rawSens);
+  let sens = Number.isFinite(storedSens) && storedSens >= 0 && storedSens < SENS.length
+    ? storedSens : 2;                                     // HIGH by default
+  const sensBtn = document.getElementById('t-sens');
+  let mask = 0, sx = 0, sy = 0;
+  // Which deck is showing. The game state loop calls setDeck every frame; it
+  // starts on the menu deck because the game starts on its title screen. On a
+  // swap everything is let go: a button that disappears under a finger never
+  // gets its pointerup, and would stay held into the other deck.
+  let menuDeck = true;
+  document.body.classList.add('menu');
+  window.setDeck = menu => {
+    if (menu === menuDeck) return;
+    menuDeck = menu;
+    document.body.classList.toggle('menu', menu);
+    mask = 0; sx = 0; sy = 0; steerId = null;
+    steer.classList.remove('on'); tourEnd();
+    for (const b of el.querySelectorAll('.tbtn.held')) b.classList.remove('held');
+    push();
+  };
+  let autoAccel = window.autoAccelWanted;
+  // Auto-accelerate is decided in C (Kart64_SetAutoAccel): held only while a
+  // race is actually in progress, so it can never confirm through a menu or
+  // burn out on the grid. The pad here carries only what the thumbs press.
+  const push = () => {
+    if (typeof Module !== 'undefined' && Module._Kart64_SetTouchPad) {
+      Module._Kart64_SetTouchPad(1, sx, sy, mask);
+    }
+  };
+  // --- steering: anchors wherever the thumb lands, so it works for any hand
+  // size and any grip, rather than demanding the thumb find a fixed stick.
+  // The game reads the pad once a frame (33ms). A tap that starts and ends
+  // between two reads would never be seen, so every press is held for at least
+  // a couple of frames however quickly the finger leaves.
+  const MIN_HOLD = 80;
+  let steerId = null, ax = 0, ay = 0;
+  steer.addEventListener('pointerdown', e => {
+    if (menuDeck) return;   // the D-pad lives in this zone in the menus
+    steerId = e.pointerId; ax = e.clientX; ay = e.clientY;
+    steer.setPointerCapture(steerId); steer.classList.add('on', 'used');
+    const r = steer.getBoundingClientRect();
+    dot.style.left = (ax - r.left) + 'px'; dot.style.top = (ay - r.top) + 'px';
+    sx = 0; sy = 0; push(); e.preventDefault();
+  });
+  steer.addEventListener('pointermove', e => {
+    if (e.pointerId !== steerId) return;
+    const { radius, max } = SENS[sens];
+    const f = d => {
+      const a = Math.abs(d);
+      if (a < DEAD) return 0;
+      return Math.round(Math.sign(d) * Math.min((a - DEAD) / radius, 1) * max);
+    };
+    sx = f(e.clientX - ax);
+    sy = -f(e.clientY - ay);   // screen Y grows downward, stick Y does not
+    push(); e.preventDefault();
+  });
+  const endSteer = e => {
+    if (e.pointerId !== steerId) return;
+    steerId = null; sx = 0; sy = 0;
+    steer.classList.remove('on'); push();
+  };
+  steer.addEventListener('pointerup', endSteer);
+  steer.addEventListener('pointercancel', endSteer);
+  // --- buttons: each tracks its own pointer, so drift + item + steer can all
+  // be held at once (which is the whole point).
+  for (const b of el.querySelectorAll('.tbtn[data-bit]')) {
+    const bit = +b.dataset.bit;
+    let downAt = 0, timer = 0;
+    b.addEventListener('pointerdown', e => {
+      clearTimeout(timer); downAt = performance.now();
+      mask |= bit; b.classList.add('held'); b.setPointerCapture(e.pointerId);
+      push(); e.preventDefault();
+    });
+    const off = e => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { mask &= ~bit; b.classList.remove('held'); push(); },
+                         Math.max(0, MIN_HOLD - (performance.now() - downAt)));
+      e.preventDefault();
+    };
+    b.addEventListener('pointerup', off);
+    b.addEventListener('pointercancel', off);
+  }
+  // --- Tour mode: one thumb, anywhere ----------------------------------------
+  // The stick is the drag from wherever the thumb landed, as on the pads deck
+  // but over the whole screen and horizontal only. A flick (fast, sideways)
+  // that keeps holding is a drift: R goes down and stays down until the thumb
+  // lifts. A swipe (fast, vertical) throws the item, up for forward, down for
+  // behind. Both are read over a short window of recent samples, so a swipe
+  // works at any point of a drag and a slow drag never trips either.
+  //
+  // MK64 charges a mini-turbo when, mid-slide, the stick is held against the
+  // turn for 18 frames and brought back, twice (player_controller.c). A thumb
+  // cannot know that, so while a drift is held the game's drift assist
+  // (Kart64_SetDriftAssist in main.c) does it, counting frames; that is what
+  // makes "hold for a bigger boost, release to fire" work like Tour's.
+  const tour = document.getElementById('tour');
+  const tourDot = document.getElementById('tourdot');
+  const FLICK = 28, SWIPE = 40, WINDOW = 150, THROW_HOLD = 100, THROW_GAP = 350;
+  let tourId = null, tx0 = 0, samples = [], drifting = 0, thrownAt = 0, throwTimer = 0;
+  const assist = dir => { if (typeof Module !== 'undefined' && Module._Kart64_SetDriftAssist) Module._Kart64_SetDriftAssist(dir); };
+  const tourEnd = () => {
+    if (tourId === null) return;
+    if (drifting) assist(0);
+    tourId = null; samples = []; drifting = 0; sx = 0; sy = 0;
+    mask &= ~16; tour.classList.remove('on', 'drift');
+    push();
+  };
+  tour.addEventListener('pointerdown', e => {
+    if (menuDeck || tourId !== null) return;
+    tourId = e.pointerId; tx0 = e.clientX; samples = [[performance.now(), e.clientX, e.clientY]];
+    tour.setPointerCapture(tourId); tour.classList.add('on', 'used');
+    tourDot.style.left = e.clientX + 'px'; tourDot.style.top = e.clientY + 'px';
+    sx = 0; sy = 0; push(); e.preventDefault();
+  });
+  tour.addEventListener('pointermove', e => {
+    if (e.pointerId !== tourId) return;
+    const now = performance.now();
+    const { radius, max } = SENS[sens];
+    const d = e.clientX - tx0, a = Math.abs(d);
+    sx = a < DEAD ? 0 : Math.round(Math.sign(d) * Math.min((a - DEAD) / radius, 1) * max);
+    samples.push([now, e.clientX, e.clientY]);
+    while (samples.length > 1 && now - samples[0][0] > WINDOW) samples.shift();
+    const dx = e.clientX - samples[0][1], dy = e.clientY - samples[0][2];
+    if (!drifting && Math.abs(dx) >= FLICK && Math.abs(dx) > 1.5 * Math.abs(dy)) {
+      drifting = Math.sign(dx); mask |= 16; tour.classList.add('drift');
+      assist(drifting); samples = [];
+    } else if (Math.abs(dy) >= SWIPE && Math.abs(dy) > 1.5 * Math.abs(dx) && now - thrownAt > THROW_GAP) {
+      thrownAt = now; samples = [];
+      sy = dy < 0 ? 60 : -60; mask |= 8192;
+      clearTimeout(throwTimer);
+      throwTimer = setTimeout(() => { mask &= ~8192; sy = 0; push(); }, THROW_HOLD);
+    }
+    push(); e.preventDefault();
+  });
+  tour.addEventListener('pointerup', e => { if (e.pointerId === tourId) tourEnd(); });
+  tour.addEventListener('pointercancel', e => { if (e.pointerId === tourId) tourEnd(); });
+  const ctrlBtn = document.getElementById('t-ctrl');
+  const syncCtrl = () => { ctrlBtn.textContent = 'CTRL: ' + (window.tourMode ? 'TOUR' : 'PADS'); layout(); };
+  ctrlBtn.addEventListener('click', () => {
+    window.tourMode = !window.tourMode;
+    localStorage.setItem('k64.ctrl', window.tourMode ? 'tour' : 'pads');
+    tourEnd(); mask = 0; sx = 0; sy = 0; push();
+    syncCtrl();
+  });
+  syncCtrl();
+  const syncAuto = () => {
+    autoBtn.textContent = 'AUTO: ' + (autoAccel ? 'ON' : 'OFF');
+    aBtn.classList.toggle('autohidden', autoAccel);
+    // Landscape stacks four buttons in a gutter when GO is showing; the class
+    // gives the CSS a chance to take the height back off the primaries.
+    el.classList.toggle('manual', !autoAccel);
+  };
+  autoBtn.addEventListener('click', () => {
+    autoAccel = !autoAccel; window.autoAccelWanted = autoAccel;
+    localStorage.setItem('k64.auto', autoAccel ? '1' : '0');
+    syncAuto(); push();
+  });
+  syncAuto();
+  const syncSens = () => { sensBtn.textContent = 'STEER: ' + SENS[sens].name; };
+  sensBtn.addEventListener('click', () => {
+    sens = (sens + 1) % SENS.length;
+    localStorage.setItem('k64.sens', sens);
+    syncSens();
+  });
+  syncSens();
+  // Show once the overlay gets out of the way, i.e. the game is actually running.
+  const check = () => {
+    const running = overlay.classList.contains('hidden');
+    el.classList.toggle('hidden', !running);
+    document.body.classList.toggle('touch', running);
+  };
+  new MutationObserver(check).observe(overlay, { attributes: true, attributeFilter: ['class'] });
+  check();
+  // A stray double-tap should not zoom the page mid-race.
+  document.addEventListener('gesturestart', e => e.preventDefault());
+})();
+</script>
+</body>
+</html>

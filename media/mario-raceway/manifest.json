@@ -1,0 +1,117 @@
+{
+  "course": "Mario Raceway",
+  "texture_pack": "mk64-reloaded-phone-karts128.o2r",
+  "capture_date": "2026-10-07",
+  "environment": "iOS 26 Simulator, Home Screen PWA",
+  "steering": "Existing test autopilot; not manually driven",
+  "audio": "Silent",
+  "alignment": "Same race-clock sections; visually checked within 0.1 seconds. Approximate across independent captures.",
+  "sources": {
+    "landscape": {
+      "label": "Landscape full screen",
+      "race_clock_zero_seconds": 13.65,
+      "file": "sources/landscape.mp4",
+      "bytes": 34847277,
+      "sha256": "c8093a577b6aaeefe90675b5cfad6be69d7acfeac2c7b80648c854f14d6a0b9b",
+      "width": 1280,
+      "height": 590,
+      "duration": 147.875
+    },
+    "portrait": {
+      "label": "Portrait with buttons",
+      "race_clock_zero_seconds": 14.8,
+      "file": "sources/portrait.mp4",
+      "bytes": 25173732,
+      "sha256": "15057b9bfe26d72e70179bc964b7bafb3736b0fcaeaf34d86d2f8b6e404f755e",
+      "width": 590,
+      "height": 1280,
+      "duration": 141.0
+    },
+    "tour": {
+      "label": "Portrait Tour",
+      "race_clock_zero_seconds": 14.24,
+      "file": "sources/tour.mp4",
+      "bytes": 25606302,
+      "sha256": "5e9b5f34e6fa8d7b25f167242b1c3c87434fe5b17bd1bfc2c4840ece275c5ca6",
+      "width": 590,
+      "height": 1280,
+      "duration": 150.416667
+    }
+  },
+  "sections": [
+    {
+      "id": "first-bend",
+      "label": "First bend",
+      "screenshot_race_seconds": 12,
+      "modes": {
+        "landscape": {
+          "screenshot_source_seconds": 25.65,
+          "screenshot": {
+            "file": "screenshots/first-bend-landscape.webp",
+            "bytes": 71504,
+            "sha256": "fe1534bee1002ff79a61d9b8fb26ec5c3d365463e17db1a119c99335a1e96579",
+            "width": 1280,
+            "height": 590
+          }
+        },
+        "portrait": {
+          "screenshot_source_seconds": 26.8,
+          "screenshot": {
+            "file": "screenshots/first-bend-portrait.webp",
+            "bytes": 57278,
+            "sha256": "001e155725aaa64b8c4763254870a6e76cd40593873c30c3e012c34f469fcdd2",
+            "width": 590,
+            "height": 1280
+          }
+        },
+        "tour": {
+          "screenshot_source_seconds": 26.24,
+          "screenshot": {
+            "file": "screenshots/first-bend-tour.webp",
+            "bytes": 52406,
+            "sha256": "8c5d7a1d74f6fc136d0ec02d860965e4bac98d898fa2baea281622c304f78089",
+            "width": 590,
+            "height": 1280
+          }
+        }
+      }
+    },
+    {
+      "id": "second-lap",
+      "label": "Second-lap drift",
+      "screenshot_race_seconds": 50,
+      "modes": {
+        "landscape": {
+          "screenshot_source_seconds": 63.65,
+          "screenshot": {
+            "file": "screenshots/second-lap-landscape.webp",
+            "bytes": 83128,
+            "sha256": "9c391d179106b617bc3539c3ec30c347d259a6b6e0af1dc7ea8f342901e987cd",
+            "width": 1280,
+            "height": 590
+          }
+        },
+        "portrait": {
+          "screenshot_source_seconds": 64.8,
+          "screenshot": {
+            "file": "screenshots/second-lap-portrait.webp",
+            "bytes": 65142,
+            "sha256": "3cd7dd25996bfdfb529fcc7b8ae496cff21f7fbbe5aebf998c47765aaad3e9df",
+            "width": 590,
+            "height": 1280
+          }
+        },
+        "tour": {
+          "screenshot_source_seconds": 64.24,
+          "screenshot": {
+            "file": "screenshots/second-lap-tour.webp",
+            "bytes": 62462,
+            "sha256": "340bfcd57dd73e2d450995bb0c1d5f6812ca26042f5239e34521b40aa174c22b",
+            "width": 590,
+            "height": 1280
+          }
+        }
+      }
+    }
+  ]
+}

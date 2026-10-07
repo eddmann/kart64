@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gate": "node gate-test.mjs",
+    "rom": "node rom-test.mjs",
+    "layout": "node layout-test.mjs",
+    "race": "node race-test.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}
