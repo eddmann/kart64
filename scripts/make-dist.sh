@@ -15,6 +15,14 @@ FILES=(
   spaghetti.o2r
   index.html coi-sw.js manifest.webmanifest
   icon-192.png icon-512.png apple-touch-icon.png
+  courses.json
+  courses/silverstone/silverstone-v1.9.o2r
+  courses/silverstone/media/index.html
+  courses/silverstone/media/manifest.json
+  courses/silverstone/media/silverstone-mario-full-lap.mp4
+  courses/silverstone/media/silverstone-verstappen-vs-mario.mp4
+  courses/silverstone/media/comparison-poster.webp
+  courses/silverstone/media/comparison-sync.json
 )
 
 for f in "${FILES[@]}"; do
@@ -22,7 +30,13 @@ for f in "${FILES[@]}"; do
 done
 
 rm -rf "$DIST" && mkdir -p "$DIST"
-for f in "${FILES[@]}"; do cp "$BUILD/$f" "$DIST/"; done
+for f in "${FILES[@]}"; do
+  mkdir -p "$DIST/$(dirname "$f")"
+  cp "$BUILD/$f" "$DIST/$f"
+done
+
+# The gallery screenshots, as a folder.
+cp -R "$BUILD/courses/silverstone/media/screenshots" "$DIST/courses/silverstone/media/"
 
 # Belt and braces: even though the copy is a whitelist, assert the result.
 bad=$(find "$DIST" -type f \( -iname 'mk64*' -o -iname '*.z64' -o -iname '*.v64' -o -iname '*.n64' -o -iname 'baserom*' \) | head)

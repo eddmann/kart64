@@ -1,0 +1,196 @@
+{
+  "title": "Silverstone: Verstappen vs Mario, corner-aligned lap",
+  "fps": 30,
+  "width": 1920,
+  "height": 720,
+  "f1_speed": "Recorded speed; 2025 British GP pole reference, 1:24.892",
+  "mario_speed": "Piecewise linear retiming between visually reviewed checkpoints; native AI-assisted v1.9 full GP lap, no pit shortcut",
+  "method": "F1 anchors manually reviewed in the official onboard. Mario anchors derived from native capture telemetry and geometry curvature peaks, then visually reviewed. These are approximate visual landmarks, not surveyed GPS correspondences. Source frames are preserved; no geometry or driving state is changed.",
+  "limits": "Shows shared GP route/corner order and visible differences. Does not establish identical road widths, surveyed geometry, FOV, buildings or scenery. F1 T-cam and Mario chase camera differ.",
+  "f1_source_url": "https://www.formula1.com/en/video/onboard-max-verstappens-2025-pirelli-pole-position-award-lap-at-the-british-grand-prix.1836826066949110291",
+  "f1_youtube_url": "https://www.youtube.com/watch?v=ooeujTa2-k8",
+  "source_files": {
+    "f1": {
+      "filename": "max-verstappen-2025-pole-reference.mp4",
+      "sha256": "48549e57891a97b20513242d426abf237c6f926e6665a7e5accbcd4beefb9fd6"
+    },
+    "mario": {
+      "filename": "silverstone-mario-full-lap-v1.9.mp4",
+      "sha256": "3b68779edde036d091a2edfc3a10cd5776a5b916c3ff916efead30201462b9f0"
+    }
+  },
+  "anchors": [
+    {
+      "label": "Start / Hamilton Straight",
+      "path_index": 0,
+      "f1_seconds": 2.2,
+      "mario_seconds": 0.0,
+      "output_frame": 0
+    },
+    {
+      "label": "Abbey (T1)",
+      "path_index": 53,
+      "f1_seconds": 7.05,
+      "mario_seconds": 7.947304,
+      "output_frame": 146
+    },
+    {
+      "label": "Farm (T2)",
+      "path_index": 86,
+      "f1_seconds": 10.05,
+      "mario_seconds": 12.814304,
+      "output_frame": 236
+    },
+    {
+      "label": "Village (T3)",
+      "path_index": 121,
+      "f1_seconds": 14.4,
+      "mario_seconds": 18.789304,
+      "output_frame": 366
+    },
+    {
+      "label": "The Loop (T4)",
+      "path_index": 142,
+      "f1_seconds": 18.35,
+      "mario_seconds": 21.825304,
+      "output_frame": 485
+    },
+    {
+      "label": "Aintree (T5)",
+      "path_index": 171,
+      "f1_seconds": 22.1,
+      "mario_seconds": 26.392304,
+      "output_frame": 597
+    },
+    {
+      "label": "Wellington Straight",
+      "path_index": 220,
+      "f1_seconds": 26.0,
+      "mario_seconds": 33.285304,
+      "output_frame": 714
+    },
+    {
+      "label": "Brooklands (T6)",
+      "path_index": 280,
+      "f1_seconds": 31.85,
+      "mario_seconds": 41.818304,
+      "output_frame": 890
+    },
+    {
+      "label": "Luffield (T7)",
+      "path_index": 315,
+      "f1_seconds": 35.5,
+      "mario_seconds": 47.105304,
+      "output_frame": 999
+    },
+    {
+      "label": "Woodcote (T8)",
+      "path_index": 359,
+      "f1_seconds": 42.0,
+      "mario_seconds": 53.720304,
+      "output_frame": 1194
+    },
+    {
+      "label": "National Straight",
+      "path_index": 400,
+      "f1_seconds": 45.4,
+      "mario_seconds": 59.508304,
+      "output_frame": 1296
+    },
+    {
+      "label": "Copse (T9)",
+      "path_index": 435,
+      "f1_seconds": 49.15,
+      "mario_seconds": 64.359304,
+      "output_frame": 1408
+    },
+    {
+      "label": "Maggotts left (T10)",
+      "path_index": 510,
+      "f1_seconds": 55.2,
+      "mario_seconds": 75.215304,
+      "output_frame": 1590
+    },
+    {
+      "label": "Maggotts right (T11)",
+      "path_index": 525,
+      "f1_seconds": 56.25,
+      "mario_seconds": 77.342304,
+      "output_frame": 1622
+    },
+    {
+      "label": "Becketts left (T12)",
+      "path_index": 552,
+      "f1_seconds": 58.15,
+      "mario_seconds": 81.299304,
+      "output_frame": 1678
+    },
+    {
+      "label": "Becketts right (T13)",
+      "path_index": 572,
+      "f1_seconds": 59.8,
+      "mario_seconds": 84.232304,
+      "output_frame": 1728
+    },
+    {
+      "label": "Chapel (T14)",
+      "path_index": 590,
+      "f1_seconds": 62.05,
+      "mario_seconds": 86.969304,
+      "output_frame": 1795
+    },
+    {
+      "label": "Hangar Straight",
+      "path_index": 657,
+      "f1_seconds": 67.2,
+      "mario_seconds": 96.304304,
+      "output_frame": 1950
+    },
+    {
+      "label": "Stowe (T15)",
+      "path_index": 715,
+      "f1_seconds": 73.0,
+      "mario_seconds": 104.308304,
+      "output_frame": 2124
+    },
+    {
+      "label": "Vale (T16)",
+      "path_index": 784,
+      "f1_seconds": 80.0,
+      "mario_seconds": 114.654304,
+      "output_frame": 2334
+    },
+    {
+      "label": "Club first right (T17)",
+      "path_index": 793,
+      "f1_seconds": 80.95,
+      "mario_seconds": 115.981304,
+      "output_frame": 2362
+    },
+    {
+      "label": "Club final right (T18)",
+      "path_index": 820,
+      "f1_seconds": 82.35,
+      "mario_seconds": 120.045304,
+      "output_frame": 2404
+    },
+    {
+      "label": "Finish / Hamilton Straight",
+      "path_index": 842,
+      "f1_seconds": 87.092,
+      "mario_seconds": 123.489402,
+      "output_frame": 2547
+    },
+    {
+      "label": "Lap complete / run-out",
+      "path_index": null,
+      "f1_seconds": 90.092,
+      "mario_seconds": 126.489402,
+      "output_frame": 2637
+    }
+  ],
+  "course_checkpoints": 23,
+  "run_out_seconds": 3,
+  "audio": "Original F1 onboard audio; Mario audio omitted in the comparison.",
+  "mario_source_lap": 2
+}

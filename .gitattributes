@@ -1,2 +1,4 @@
+# Editable Blender projects are binary authoring sources, stored directly in Git.
+courses/**/project/*.blend binary
 # A unified patch uses a single space to represent an empty context line.
 patches/*.patch whitespace=-blank-at-eol

@@ -742,6 +742,18 @@ async function installPack() {
   }
 }
 
+// Install the bundled courses as mods before the game starts, where its in-game
+// Custom browser finds them. Mods are excluded from the IDBFS save sync.
+async function installCourses() {
+  say('Loading bundled courses…');
+  const catalog = await (await fetch('courses.json', { cache: 'no-cache' })).json();
+  for (const course of catalog.courses) {
+    const response = await fetch(course.archive, { cache: 'no-cache' });
+    if (!response.ok) throw new Error(course.title + ': HTTP ' + response.status);
+    FS.writeFile('/data/mods/bundled-' + course.id + '.o2r', new Uint8Array(await response.arrayBuffer()), { canOwn: true });
+  }
+}
+
 // .n64 (little-endian, word-swapped) / .v64 (byte-swapped) -> .z64 (native)
 function toZ64(buf) {
   const d = new Uint8Array(buf);
@@ -917,6 +929,7 @@ var Module = {
         }
         if (!have('spaghetti.o2r')) { say('Fetching base assets…'); await fetchInto('spaghetti.o2r'); }
         await installPack();
+        await installCourses();
         // Dev shortcut, localhost only: a build dir that already holds an
         // mk64.o2r (from the ExtractAssets target) can be booted with
         // ?prebuilt and no ROM drop. It is ignored on any other origin, so a

@@ -3,7 +3,7 @@
 [Back to Kart64](../README.md) · [Local build setup](development.md)
 
 The Playwright harnesses cover the startup page, layouts, ROM extraction,
-and phone controls. Install the test dependencies and Playwright's Chromium
+phone controls, and custom courses. Install the test dependencies and Playwright's Chromium
 from the repository root:
 
 ```sh
@@ -24,11 +24,12 @@ make test/layout
 The gate check needs no engine build. The layout check needs a local build
 from `make build` but no ROM.
 
-## ROM and races
+## ROM, races and custom courses
 
 ```sh
 make test/rom ROM=~/roms/mk64.z64
 make test/race ROM=~/roms/mk64.z64
+make test/course ROM=~/roms/mk64.z64
 ```
 
 Use the path to your own ROM for `ROM`.
@@ -37,10 +38,12 @@ Use the path to your own ROM for `ROM`.
 |---|---|
 | `rom-test.mjs` | ROM selection, extraction, reload from cache, and reset |
 | `race-test.mjs` | Phone touch input through menus, racing, pause, rotation, and results |
+| `course-test.mjs` | Silverstone from the in-game Custom menu: a standalone race, Change Course, and Time Trial saves |
 
 The ROM is read from your disk and fed to the page's file input; it is never
 copied into the repository or served over HTTP.
 
 The [phone showcase](../media/mario-raceway/README.md) contains simulator
 recordings with automated steering. They illustrate the layouts and textures;
-the race harness covers touch interaction.
+the race harness covers touch interaction. Silverstone's more detailed course
+validation is in [its validation notes](../courses/silverstone/docs/VALIDATION.md).

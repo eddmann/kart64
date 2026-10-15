@@ -16,6 +16,7 @@ SK_FILES=(
   cmake/emscripten-deps.cmake
   src/main.c
   src/camera.c
+  src/code_800029B0.c
   src/code_80057C60.c
   src/math_util_2.c
   src/menu_items.c
@@ -26,6 +27,10 @@ SK_FILES=(
   src/port/Game.cpp
   src/port/GameExtractor.cpp
   src/port/kart64_web.cpp
+  src/port/kart64_courses.cpp
+  src/port/kart64_courses.h
+  src/racing/race_logic.c
+  src/port/pak.cpp
 )
 LUS_FILES=(
   CMakeLists.txt
@@ -36,10 +41,11 @@ LUS_FILES=(
   src/fast/interpreter.cpp
   src/ship/audio/SDLAudioPlayer.cpp
   src/ship/window/gui/Gui.cpp
+  src/libultraship/libultra/os_eeprom.cpp
 )
 
 # New files only show in `git diff` once git knows about them.
-git -C "$SK" add -N cmake/emscripten-deps.cmake src/port/kart64_web.cpp 2>/dev/null || true
+git -C "$SK" add -N cmake/emscripten-deps.cmake src/port/kart64_web.cpp src/port/kart64_courses.cpp src/port/kart64_courses.h 2>/dev/null || true
 git -C "$SK/libultraship" add -N cmake/dependencies/emscripten.cmake 2>/dev/null || true
 
 git -C "$SK" diff -- "${SK_FILES[@]}" > "$OUT/spaghettikart-emscripten.patch"
@@ -47,7 +53,7 @@ git -C "$SK/libultraship" diff -- "${LUS_FILES[@]}" > "$OUT/libultraship-emscrip
 
 # Anything modified that the lists above do not cover is either a mistake or a
 # file that needs adding to the list — say so rather than silently dropping it.
-extra=$(git -C "$SK" status --porcelain -- . ':!include/assets' ':!build' | grep -vE "^ M ($(IFS='|'; echo "${SK_FILES[*]}"))$|^ ?[AM]+ cmake/emscripten-deps.cmake$|^ ?[AM]+ src/port/kart64_web.cpp$|^ [mM] libultraship$" || true)
+extra=$(git -C "$SK" status --porcelain -- . ':!include/assets' ':!build' | grep -vE "^ M ($(IFS='|'; echo "${SK_FILES[*]}"))$|^ ?[AM]+ cmake/emscripten-deps.cmake$|^ ?[AM]+ src/port/kart64_(web.cpp|courses.cpp|courses.h)$|^ [mM] libultraship$" || true)
 [ -z "$extra" ] || { echo "note: changes outside the patch list (not captured):"; echo "$extra"; }
 
 for p in "$OUT"/*.patch; do

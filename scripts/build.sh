@@ -76,6 +76,11 @@ cmake --build build/emscripten --target GenerateO2R
 # --- web page ----------------------------------------------------------------
 cp "$REPO_ROOT"/web/* "$BUILD_DIR/"
 
+# Bundled original course and optional viewing media; ROM assets remain local.
+mkdir -p "$BUILD_DIR/courses/silverstone"
+cp "$REPO_ROOT/courses/silverstone/runtime/silverstone-v1.9.o2r" "$BUILD_DIR/courses/silverstone/"
+cp -R "$REPO_ROOT/courses/silverstone/media" "$BUILD_DIR/courses/silverstone/"
+
 cat <<EOF
 
 Build complete: $BUILD_DIR

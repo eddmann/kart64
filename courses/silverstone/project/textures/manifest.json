@@ -1,0 +1,552 @@
+{
+  "asphalt": {
+    "file": "asphalt.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "grass": {
+    "file": "grass.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "gravel": {
+    "file": "gravel.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "concrete": {
+    "file": "concrete.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "leaves": {
+    "file": "leaves.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "service_asphalt": {
+    "file": "service_asphalt.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "dirt": {
+    "file": "dirt.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "runoff_blue": {
+    "file": "runoff_blue.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "structural_concrete": {
+    "file": "structural_concrete.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "Roof": {
+    "file": "Roof.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "Silver": {
+    "file": "Silver.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "Rubber": {
+    "file": "Rubber.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "Bark": {
+    "file": "Bark.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Seamless surface tile",
+    "original": true
+  },
+  "glass": {
+    "file": "glass.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Wing and control tower window bays",
+    "original": true
+  },
+  "garage": {
+    "file": "garage.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Pit garage roller door",
+    "original": true
+  },
+  "crowd": {
+    "file": "crowd.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Abstract spectators on grandstand tiers",
+    "original": true
+  },
+  "fence": {
+    "file": "fence.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Alpha-cutout chain-link catch fence",
+    "original": true
+  },
+  "cloud": {
+    "file": "cloud.png",
+    "size": [
+      64,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 4096,
+    "purpose": "Original alpha-cutout cumulus sky sprite",
+    "original": true
+  },
+  "spectators": {
+    "file": "spectators.png",
+    "size": [
+      32,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Standing spectator silhouettes for stepped grandstands",
+    "original": true
+  },
+  "garage_numbers": {
+    "file": "garage_numbers.png",
+    "size": [
+      64,
+      32
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 4096,
+    "purpose": "Twenty numbered pit-bay plaques in one texture atlas",
+    "original": true
+  },
+  "sign_silverstone": {
+    "file": "sign_silverstone.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: SILVERSTONE",
+    "original": true
+  },
+  "sign_the_wing": {
+    "file": "sign_the_wing.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: THE WING",
+    "original": true
+  },
+  "sign_pit_lane": {
+    "file": "sign_pit_lane.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: PIT LANE",
+    "original": true
+  },
+  "sign_national_pits": {
+    "file": "sign_national_pits.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: NATIONAL PITS",
+    "original": true
+  },
+  "sign_welcome": {
+    "file": "sign_welcome.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: WELCOME",
+    "original": true
+  },
+  "sign_kart64": {
+    "file": "sign_kart64.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: KART64",
+    "original": true
+  },
+  "sign_abbey": {
+    "file": "sign_abbey.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: ABBEY",
+    "original": true
+  },
+  "sign_farm": {
+    "file": "sign_farm.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: FARM",
+    "original": true
+  },
+  "sign_village": {
+    "file": "sign_village.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: VILLAGE",
+    "original": true
+  },
+  "sign_the_loop": {
+    "file": "sign_the_loop.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: THE LOOP",
+    "original": true
+  },
+  "sign_aintree": {
+    "file": "sign_aintree.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: AINTREE",
+    "original": true
+  },
+  "sign_brooklands": {
+    "file": "sign_brooklands.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: BROOKLANDS",
+    "original": true
+  },
+  "sign_luffield": {
+    "file": "sign_luffield.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: LUFFIELD",
+    "original": true
+  },
+  "sign_woodcote": {
+    "file": "sign_woodcote.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: WOODCOTE",
+    "original": true
+  },
+  "sign_copse": {
+    "file": "sign_copse.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: COPSE",
+    "original": true
+  },
+  "sign_maggotts": {
+    "file": "sign_maggotts.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: MAGGOTTS",
+    "original": true
+  },
+  "sign_becketts": {
+    "file": "sign_becketts.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: BECKETTS",
+    "original": true
+  },
+  "sign_chapel": {
+    "file": "sign_chapel.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: CHAPEL",
+    "original": true
+  },
+  "sign_stowe": {
+    "file": "sign_stowe.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: STOWE",
+    "original": true
+  },
+  "sign_vale": {
+    "file": "sign_vale.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: VALE",
+    "original": true
+  },
+  "sign_club": {
+    "file": "sign_club.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: CLUB",
+    "original": true
+  },
+  "sign_150": {
+    "file": "sign_150.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: 150",
+    "original": true
+  },
+  "sign_100": {
+    "file": "sign_100.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: 100",
+    "original": true
+  },
+  "sign_50": {
+    "file": "sign_50.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: 50",
+    "original": true
+  },
+  "sign_paddock": {
+    "file": "sign_paddock.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: PADDOCK",
+    "original": true
+  },
+  "sign_pit_exit": {
+    "file": "sign_pit_exit.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: PIT EXIT",
+    "original": true
+  },
+  "sign_cafe": {
+    "file": "sign_cafe.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: CAFE",
+    "original": true
+  },
+  "sign_race_control": {
+    "file": "sign_race_control.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: RACE CONTROL",
+    "original": true
+  },
+  "sign_fan_zone": {
+    "file": "sign_fan_zone.png",
+    "size": [
+      64,
+      16
+    ],
+    "format": "RGBA16",
+    "tmem_bytes": 2048,
+    "purpose": "Original trackside sign: FAN ZONE",
+    "original": true
+  },
+  "event_screen": {
+    "file": "event_screen.png",
+    "size": [
+      64,
+      32
+    ],
+    "original": true,
+    "purpose": "Original static event display: GP outline and timing-board motif",
+    "format": "RGBA16",
+    "tmem_bytes": 4096
+  }
+}

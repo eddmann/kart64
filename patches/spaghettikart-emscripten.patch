@@ -270,6 +270,30 @@ index dcd39e88a..000c7bea7 100644
      camera->fieldOfView = var_f0;
      camera->unk_B4 = var_f0;
  }
+diff --git a/src/code_800029B0.c b/src/code_800029B0.c
+index 4d68b49de..ca08add1e 100644
+--- a/src/code_800029B0.c
++++ b/src/code_800029B0.c
+@@ -1,3 +1,6 @@
++#ifdef __EMSCRIPTEN__
++#include "port/kart64_courses.h"
++#endif
+ #include <libultraship.h>
+ #include <macros.h>
+ #include <mk64.h>
+@@ -204,7 +207,11 @@ void setup_race(void) {
+     if (gModeSelection == GRAND_PRIX) {
+         gCurrentCourseId = gCupCourseOrder[gCupSelection][gCourseIndexInCup];
+         // Skip for debug menu
+-        if (gMenuSelection != START_MENU) {
++        if (gMenuSelection != START_MENU
++#ifdef __EMSCRIPTEN__
++            && !Kart64_UsingCustomCourse()
++#endif
++        ) {
+             TrackBrowser_SetTrackFromCup();
+         }
+     }
 diff --git a/src/code_80057C60.c b/src/code_80057C60.c
 index 57eab27ab..ec6e007a1 100644
 --- a/src/code_80057C60.c
@@ -333,10 +357,17 @@ index 57eab27ab..ec6e007a1 100644
          func_8005902C();
          func_80057DD0();
 diff --git a/src/main.c b/src/main.c
-index 728d65609..be64cee17 100644
+index 728d65609..ac49b06db 100644
 --- a/src/main.c
 +++ b/src/main.c
-@@ -387,12 +387,94 @@ void update_controller(s32 index) {
+@@ -1,3 +1,6 @@
++#ifdef __EMSCRIPTEN__
++#include "port/kart64_courses.h"
++#endif
+ #include <libultraship.h>
+ #include <libultra/vi.h>
+ #include <libultra/os.h>
+@@ -387,12 +390,94 @@ void update_controller(s32 index) {
      controller->stickDirection = stick;
  }
  
@@ -431,6 +462,16 @@ index 728d65609..be64cee17 100644
      update_controller(0);
      update_controller(1);
      update_controller(2);
+@@ -792,6 +877,9 @@ void race_logic_loop(void) {
+     func_802A4300();
+     func_800591B4();
+     func_80093E20();
++#ifdef __EMSCRIPTEN__
++    Kart64_DrawCustomResults();
++#endif
+ #if DVDL
+     display_dvdl();
+ #endif
 diff --git a/src/math_util_2.c b/src/math_util_2.c
 index cad716279..715e20f0e 100644
 --- a/src/math_util_2.c
@@ -456,10 +497,37 @@ index cad716279..715e20f0e 100644
  
  Mat4 sInterpolationMatrixStack[0x1000];
 diff --git a/src/menu_items.c b/src/menu_items.c
-index b6142ca37..ccc973e80 100644
+index b6142ca37..f223903e9 100644
 --- a/src/menu_items.c
 +++ b/src/menu_items.c
-@@ -6497,6 +6497,17 @@ void render_menus(MenuItem* arg0) {
+@@ -1,3 +1,6 @@
++#ifdef __EMSCRIPTEN__
++#include "port/kart64_courses.h"
++#endif
+ #include <libultraship.h>
+ #include <libultra/types.h>
+ #include <macros.h>
+@@ -4946,6 +4949,9 @@ void func_8009C918(void) {
+ }
+ 
+ void func_8009CA2C(void) {
++#ifdef __EMSCRIPTEN__
++    Kart64_DrawCourseBrowser();
++#endif
+     s32 var_s0;
+ 
+     for (var_s0 = 0; var_s0 < 5; var_s0++) {
+@@ -6348,6 +6354,9 @@ static void draw_version(void) {
+ // Biggest diff left is in the case 0x12 though 0x19 handling. Not really sure what's going on there
+ // There's also a diff in the handling of gTextNoController in case 0x4. Not sure what's going on there either
+ void render_menus(MenuItem* arg0) {
++#ifdef __EMSCRIPTEN__
++    if (Kart64_CustomCourseMenu() && arg0->type != COURSE_SELECT_BACKGROUND) return;
++#endif
+     s32 var_a1 = 0;
+     s32 var_v1 = 0;
+     UNUSED s32 stackPadding0;
+@@ -6497,6 +6506,17 @@ void render_menus(MenuItem* arg0) {
                  var_a1 = arg0->type - MENU_ITEM_UI_1P_GAME;
                  func_800A8270(var_a1, arg0);
                  func_800A0FA4(arg0, var_a1);
@@ -478,10 +546,17 @@ index b6142ca37..ccc973e80 100644
              case MENU_ITEM_UI_OK:
                  func_800A8564(arg0);
 diff --git a/src/menus.c b/src/menus.c
-index d9b84c0a9..244ef4766 100644
+index d9b84c0a9..f9710883b 100644
 --- a/src/menus.c
 +++ b/src/menus.c
-@@ -1314,7 +1314,18 @@ void main_menu_act(struct Controller* controller, u16 controllerIdx) {
+@@ -1,3 +1,6 @@
++#ifdef __EMSCRIPTEN__
++#include "port/kart64_courses.h"
++#endif
+ #include <libultraship.h>
+ #include <libultraship/bridge/audiobridge.h>
+ #include <macros.h>
+@@ -1314,7 +1317,18 @@ void main_menu_act(struct Controller* controller, u16 controllerIdx) {
                  break;
              }
              case MAIN_MENU_PLAYER_SELECT: {
@@ -500,6 +575,26 @@ index d9b84c0a9..244ef4766 100644
                      gPlayerCount += 1;
                      reset_cycle_flash_menu();
                      play_sound2(SOUND_MENU_CURSOR_MOVE);
+@@ -1756,6 +1770,9 @@ u32 GetCupIndex(void);
+  * Navigation of the map select track menu screen
+  */
+ void course_select_menu_act(struct Controller* controller, u16 controllerIdx) {
++#ifdef __EMSCRIPTEN__
++    if (Kart64_CourseMenuInput(controller, controllerIdx)) return;
++#endif
+     u16 btnAndStick = (controller->buttonPressed | controller->stickPressed);
+ 
+     if ((!gEnableDebugMode) && ((btnAndStick & START_BUTTON) != 0)) {
+@@ -1870,6 +1887,9 @@ void course_select_menu_act(struct Controller* controller, u16 controllerIdx) {
+  * Loads menu states so they are preserved between menu changes
+  */
+ void load_menu_states(s32 menuSelection) {
++#ifdef __EMSCRIPTEN__
++    Kart64_CourseMenuOpen(menuSelection);
++#endif
+     s32 i;
+ 
+     gDebugMenuSelection = CVarGetInteger("gEnableDebugMode", 0) + 1;
 diff --git a/src/port/Engine.cpp b/src/port/Engine.cpp
 index 3d516130e..52ad13c00 100644
 --- a/src/port/Engine.cpp
@@ -859,12 +954,343 @@ index 4e8b4dfae..6c1f9f75f 100644
      } catch (const std::exception& e) {
          return false;
      }
+diff --git a/src/port/kart64_courses.cpp b/src/port/kart64_courses.cpp
+new file mode 100644
+index 000000000..0cca6ae15
+--- /dev/null
++++ b/src/port/kart64_courses.cpp
+@@ -0,0 +1,298 @@
++// In-engine course menus: normal controller input and the game's own 2D renderer.
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#include <algorithm>
++#include <cstdio>
++#include <cstring>
++#include <string>
++#include <vector>
++#include <memory>
++#include <stb_image.h>
++#include <unordered_map>
++#include "engine/TrackBrowser.h"
++#include "port/Game.h"
++#include "port/kart64_courses.h"
++extern "C" {
++#include "menus.h"
++#include "main.h"
++#include "menu_items.h"
++#include "save.h"
++#include "save_data.h"
++#include "replays.h"
++#include "audio/external.h"
++#include "racing/race_logic.h"
++}
++
++namespace {
++bool customTab = false, confirmCourse = false, singleRace = false, results = false;
++size_t selected = 0;
++int resultCursor = 0;
++std::string savePrefix, activeCourse;
++std::vector<const TrackInfo*> courses;
++Cup* stockCup = nullptr;
++size_t stockCupIndex = 0, stockPosition = 0;
++
++void RefreshCourses() {
++    courses.clear();
++    auto manager = Ship::Context::GetInstance()->GetResourceManager()->GetArchiveManager();
++    for (auto info : gTrackRegistry.GetAllInfo()) {
++        if (!info || info->Path.empty() || info->ResourceName.rfind("mk:", 0) == 0) continue;
++        // Only installed mods: the engine ships a development Harbour example.
++        auto archive = manager->GetArchiveFromFile(info->Path + "/scene.json");
++        if (!archive) continue;
++        const auto& path = archive->GetPath();
++        if (path.rfind("mods/", 0) != 0 && path.find("/mods/") == std::string::npos) continue;
++        courses.push_back(info);
++    }
++    std::sort(courses.begin(), courses.end(), [](auto a, auto b) {
++        return a->Name == b->Name ? a->ResourceName < b->ResourceName : a->Name < b->Name;
++    });
++    if (selected >= courses.size()) selected = 0;
++}
++std::string PrefixFor(const std::string& id) {
++    // Preserve the records created by the earlier Silverstone-only integration.
++    if (id == "eddmann:silverstone") return "silverstone-";
++    // Hex encoding is stable, injective and safe as a filename (no path traversal).
++    std::string prefix = "course-";
++    static const char hex[] = "0123456789abcdef";
++    for (unsigned char c : id) { prefix += hex[c >> 4]; prefix += hex[c & 15]; }
++    return prefix + "-";
++}
++void SwitchRecords(const std::string& prefix) {
++    if (savePrefix == prefix) return;
++    savePrefix = prefix;
++    // A missing EEPROM must not inherit the previously loaded course's data.
++    memset(&gSaveData, 0, sizeof(gSaveData));
++    load_save_data();
++    memset(D_8018EE10, 0, sizeof(struct_8018EE10_entry) * 2);
++    gGhostPlayerInit = 0;
++    bPlayerGhostDisabled = 1;
++    bCourseGhostDisabled = 1;
++    gControllerPak1State = BAD;
++    sControllerPak2State = BAD;
++    func_800B5F30();
++    func_800B6014();
++}
++void UseCustomRecords() {
++    if (courses.empty()) return;
++    // Stock code indexes time-trial slots by cup position. Every custom course
++    // uses slot zero in its own EEPROM/pak namespace instead of a stock record.
++    auto mushroom = static_cast<Cup*>(GetMushroomCup());
++    GetWorld()->SetCurrentCup(mushroom);
++    GetWorld()->SetCupIndex(0);
++    mushroom->SetTrack(0);
++    gCupSelection = 0; gCourseIndexInCup = 0; D_800DC540 = 0;
++    SwitchRecords(PrefixFor(courses[selected]->ResourceName));
++}
++void Original() {
++    customTab = confirmCourse = false;
++    SwitchRecords("");
++    if (stockCup) {
++        GetWorld()->SetCurrentCup(stockCup);
++        GetWorld()->SetCupIndex(stockCupIndex);
++        stockCup->SetTrack(stockPosition);
++        gCupSelection = stockCupIndex;
++        gCourseIndexInCup = stockPosition;
++        D_800DC540 = stockCupIndex;
++    }
++    gSubMenuSelection = SUB_MENU_MAP_SELECT_CUP;
++    TrackBrowser_SetTrackFromCup();
++}
++void Text(int x, int y, const std::string& text, int color = TEXT_YELLOW, float scale = .55f) {
++    // Stock glyphs support capitals; contain long metadata within the game screen.
++    std::string display = text.substr(0, 36);
++    for (char& c : display) {
++        if (c >= 'a' && c <= 'z') c -= 'a' - 'A';
++        if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
++              c == ' ' || c == '-' || c == '.' || c == '\'')) c = ' ';
++    }
++    set_text_color(color);
++    print_text1_center_mode_1(x, y, const_cast<char*>(display.c_str()), 0, scale, scale);
++}
++void Box(int x1, int y1, int x2, int y2, int r, int g, int b, int a = 255) {
++    gDisplayListHead = draw_box(gDisplayListHead, x1, y1, x2, y2, r, g, b, a);
++}
++void DrawMap(const TrackInfo* info) {
++    const auto path = info->Path + "/minimap.png";
++    static std::unordered_map<std::string, std::vector<uint8_t>> previews;
++    auto [entry, fresh] = previews.try_emplace(path);
++    if (fresh) {
++        // PNGs have no OTR resource header. Decode the archive's raw PNG once
++        // rather than using stock texture factories or affecting their cache.
++        auto file = Ship::Context::GetInstance()->GetResourceManager()->LoadFileProcess(path);
++        if (file && file->Buffer) {
++            int width = 0, height = 0;
++            auto pixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(file->Buffer->data()),
++                file->Buffer->size(), &width, &height, nullptr, 4);
++            if (pixels && width > 0 && height > 0) {
++                entry->second.resize(88 * 88);
++                for (int y = 0; y < 88; ++y) for (int x = 0; x < 88; ++x) {
++                    int at = ((y * height / 88) * width + x * width / 88) * 4;
++                    entry->second[y * 88 + x] = pixels[at + 3] > 100 && pixels[at] > 80;
++                }
++            }
++            stbi_image_free(pixels);
++        }
++    }
++    if (entry->second.empty()) { Text(224, 120, "NO PREVIEW", TEXT_BLUE, .45f); return; }
++    // Render the archive's minimap as compact horizontal runs with native 2D
++    // primitives. No external gallery artwork or separate GPU texture is needed.
++    const int width = 88, height = 88;
++    for (int y = 0; y < height; ++y) {
++        int begin = -1;
++        for (int x = 0; x <= width; ++x) {
++            bool ink = false;
++            if (x < width) {
++                ink = entry->second[y * width + x];
++            }
++            if (ink && begin < 0) begin = x;
++            if (!ink && begin >= 0) { Box(180 + begin, 76 + y, 180 + x, 77 + y, 230, 237, 245); begin = -1; }
++        }
++    }
++}
++}
++
++extern "C" {
++const char* Kart64_GetSavePrefix(void) { return savePrefix.c_str(); }
++void Kart64_CourseMenuOpen(int32_t menu) {
++    results = false;
++    if (menu == START_MENU || menu == MAIN_MENU || menu == 0 || menu == 1 || menu == CHARACTER_SELECT_MENU || menu == 2) {
++        singleRace = false; activeCourse.clear(); SwitchRecords("");
++    }
++    if (menu != COURSE_SELECT_MENU && menu != 3) return;
++    singleRace = false; activeCourse.clear(); confirmCourse = false;
++    RefreshCourses();
++    if (!customTab || !stockCup) {
++        stockCup = GetWorld()->GetCurrentCup();
++        stockCupIndex = GetWorld()->GetCupIndex(); stockPosition = stockCup->CursorPosition;
++    }
++    if (gModeSelection == BATTLE || gPlayerCount != 1) customTab = false;
++    if (customTab) UseCustomRecords(); else SwitchRecords("");
++}
++int32_t Kart64_CustomCourseMenu(void) {
++    return gGamestate == 0 && gMenuSelection == COURSE_SELECT_MENU && customTab;
++}
++int32_t Kart64_CourseMenuInput(struct Controller* controller, uint16_t index) {
++    if (gModeSelection == BATTLE || gPlayerCount != 1) return 0;
++    if (index != 0) return customTab;
++    if (is_screen_being_faded()) return customTab;
++    uint16_t pressed = controller->buttonPressed | controller->stickPressed;
++    // Up from the cup row opens Custom, so touch users need no extra buttons.
++    if (!customTab && ((pressed & (L_TRIG | R_TRIG)) ||
++        ((pressed & U_JPAD) && gSubMenuSelection == SUB_MENU_MAP_SELECT_CUP))) {
++        stockCup = GetWorld()->GetCurrentCup(); stockCupIndex = GetWorld()->GetCupIndex();
++        stockPosition = stockCup->CursorPosition;
++        customTab = true; confirmCourse = false; UseCustomRecords();
++        play_sound2(SOUND_MENU_SELECT); return 1;
++    }
++    if (!customTab) return 0;
++    if (pressed & (L_TRIG | R_TRIG)) { Original(); play_sound2(SOUND_MENU_GO_BACK); return 1; }
++    if (pressed & B_BUTTON) {
++        if (confirmCourse) confirmCourse = false; else Original();
++        play_sound2(SOUND_MENU_GO_BACK); return 1;
++    }
++    if (!confirmCourse && !courses.empty() && (pressed & (U_JPAD | D_JPAD | L_JPAD | R_JPAD))) {
++        bool previous = pressed & (U_JPAD | L_JPAD);
++        selected = (selected + courses.size() + (previous ? -1 : 1)) % courses.size();
++        UseCustomRecords(); play_sound2(SOUND_MENU_CURSOR_MOVE);
++    }
++    if (!courses.empty() && (pressed & (A_BUTTON | START_BUTTON))) {
++        if (!confirmCourse) { confirmCourse = true; play_sound2(SOUND_MENU_SELECT); }
++        else {
++            activeCourse = courses[selected]->ResourceName;
++            TrackBrowser_SetTrack(activeCourse.c_str());
++            singleRace = gModeSelection == GRAND_PRIX;
++            gDemoMode = DEMO_MODE_INACTIVE;
++            gSubMenuSelection = SUB_MENU_MAP_SELECT_OK;
++            func_8009E1C0(); func_800CA330(0x19); play_sound2(SOUND_MENU_OK_CLICKED);
++        }
++    }
++    return 1;
++}
++void Kart64_DrawCourseBrowser(void) {
++    if (gGamestate != 0 || gMenuSelection != COURSE_SELECT_MENU || gModeSelection == BATTLE || gPlayerCount != 1) return;
++    if (customTab) {
++        Box(12, 14, 307, 209, 12, 19, 46, 240);
++        Text(160, 36, "CUSTOM COURSES", TEXT_YELLOW, .8f);
++        if (courses.empty()) Text(160, 104, "NO CUSTOM COURSES INSTALLED", TEXT_YELLOW, .5f);
++        else {
++            const auto info = courses[selected];
++            Box(20, 56, 155, 175, 27, 43, 79);
++            Text(88, 84, info->Name, TEXT_YELLOW, .56f);
++            Text(88, 106, info->Length.empty() ? "FULL CIRCUIT" : info->Length, TEXT_BLUE_GREEN_RED_CYCLE_1, .5f);
++            Text(88, 126, "3 LAPS", TEXT_YELLOW, .5f);
++            Text(88, 146, info->ResourceName == "eddmann:silverstone" ? "PIT SHORTCUT" : "CUSTOM COURSE", TEXT_YELLOW, .44f);
++            Text(224, 68, "CIRCUIT", TEXT_YELLOW, .45f);
++            DrawMap(info);
++            Text(224, 184, std::to_string(selected + 1) + " OF " + std::to_string(courses.size()), TEXT_YELLOW, .5f);
++            Text(160, 195, confirmCourse ? "A START     B BACK" : "ARROWS BROWSE     A SELECT", TEXT_YELLOW, .44f);
++            Text(160, 53, gModeSelection == TIME_TRIALS ? "TIME TRIAL" : "SINGLE RACE - 7 CPU RIVALS", TEXT_BLUE_GREEN_RED_CYCLE_1, .43f);
++        }
++    }
++    Box(10, 213, 151, 233, customTab ? 20 : 75, customTab ? 28 : 56, 35);
++    Box(168, 213, 308, 233, customTab ? 75 : 20, customTab ? 56 : 28, 35);
++    Text(80, 227, customTab ? "B ORIGINAL" : "ORIGINAL", TEXT_YELLOW, .5f);
++    if (!customTab && gSubMenuSelection == SUB_MENU_MAP_SELECT_CUP) {
++        // The stock font has no arrow glyph. Draw the Up input icon with the
++        // game's own 2D primitives alongside the Custom label.
++        for (int row = 0; row < 5; ++row)
++            Box(204 - row, 217 + row, 205 + row, 218 + row, 255, 241, 96);
++        Box(203, 222, 206, 227, 255, 241, 96);
++        Text(247, 227, "CUSTOM", TEXT_YELLOW, .5f);
++    } else {
++        Text(238, 227, customTab ? "CUSTOM" : "L R CUSTOM", TEXT_YELLOW, .5f);
++    }
++}
++int32_t Kart64_UsingCustomCourse(void) { return !activeCourse.empty(); }
++int32_t Kart64_CustomSingleRace(void) { return singleRace && !activeCourse.empty(); }
++void Kart64_OpenCustomResults(void) {
++    results = true; resultCursor = 0;
++    gRaceState = RACE_EXIT;
++    gIsGamePaused = false;
++}
++void Kart64_CustomResultsInput(void) {
++    if (!results) return;
++    uint16_t pressed = gControllers[0].buttonPressed | gControllers[0].stickPressed;
++    // Race logic can tick twice per controller read. Consume the edge so a
++    // single press moves one item rather than skipping over Change Course.
++    gControllers[0].buttonPressed = 0;
++    gControllers[0].stickPressed = 0;
++    if (pressed & U_JPAD) { resultCursor = (resultCursor + 2) % 3; play_sound2(SOUND_MENU_CURSOR_MOVE); }
++    else if (pressed & D_JPAD) { resultCursor = (resultCursor + 1) % 3; play_sound2(SOUND_MENU_CURSOR_MOVE); }
++    if (pressed & (A_BUTTON | START_BUTTON)) {
++        results = false;
++        if (resultCursor == 0) func_802903B0();
++        else if (resultCursor == 1) func_80290388();
++        else func_80290338();
++        play_sound2(SOUND_MENU_OK_CLICKED);
++    }
++}
++void Kart64_DrawCustomResults(void) {
++    if (!results || gGamestate != RACING) return;
++    Box(34, 26, 286, 210, 12, 19, 46, 235);
++    Text(160, 54, "RACE FINISHED", TEXT_YELLOW, .8f);
++    Text(160, 80, "POSITION " + std::to_string(gPlayers[0].currentRank + 1) + " OF 8", TEXT_YELLOW, .6f);
++    const char* choices[] = {"RETRY", "CHANGE COURSE", "QUIT"};
++    for (int i = 0; i < 3; ++i) {
++        if (i == resultCursor) Box(56, 94 + i * 29, 264, 117 + i * 29, 69, 53, 20);
++        Text(160, 111 + i * 29, choices[i], TEXT_YELLOW, .65f);
++    }
++    Text(160, 198, "ARROWS CHOOSE     A CONFIRM", TEXT_YELLOW, .43f);
++}
++EMSCRIPTEN_KEEPALIVE int32_t* Kart64_GetCourseBrowserState(void) {
++    static int32_t state[11];
++    state[0] = customTab; state[1] = courses.size(); state[2] = selected; state[3] = confirmCourse;
++    state[4] = !savePrefix.empty(); state[5] = singleRace; state[6] = results; state[7] = resultCursor;
++    state[8] = gModeSelection; state[9] = gCCSelection; state[10] = 0;
++    for (int i = 1; i < 8; ++i) if ((gPlayers[i].type & PLAYER_EXISTS) && (gPlayers[i].type & PLAYER_CPU)) state[10]++;
++    return state;
++}
++EMSCRIPTEN_KEEPALIVE const char* Kart64_GetCustomCourseName(void) {
++    return courses.empty() ? "" : courses[selected]->Name.c_str();
++}
++EMSCRIPTEN_KEEPALIVE int32_t Kart64_IsSilverstone(void) {
++    auto world = GetWorld();
++    return world && world->GetTrack() && world->GetTrack()->ResourceName == "eddmann:silverstone";
++}
++}
++#endif
+diff --git a/src/port/kart64_courses.h b/src/port/kart64_courses.h
+new file mode 100644
+index 000000000..d9be98619
+--- /dev/null
++++ b/src/port/kart64_courses.h
+@@ -0,0 +1,21 @@
++#pragma once
++#ifdef __EMSCRIPTEN__
++#include <stdint.h>
++#ifdef __cplusplus
++extern "C" {
++#endif
++struct Controller;
++void Kart64_CourseMenuOpen(int32_t menu);
++int32_t Kart64_CourseMenuInput(struct Controller* controller, uint16_t index);
++int32_t Kart64_CustomCourseMenu(void);
++void Kart64_DrawCourseBrowser(void);
++int32_t Kart64_UsingCustomCourse(void);
++int32_t Kart64_CustomSingleRace(void);
++void Kart64_OpenCustomResults(void);
++void Kart64_CustomResultsInput(void);
++void Kart64_DrawCustomResults(void);
++const char* Kart64_GetSavePrefix(void);
++#ifdef __cplusplus
++}
++#endif
++#endif
 diff --git a/src/port/kart64_web.cpp b/src/port/kart64_web.cpp
 new file mode 100644
-index 000000000..bb3b08d87
+index 000000000..866ccdf6f
 --- /dev/null
 +++ b/src/port/kart64_web.cpp
-@@ -0,0 +1,180 @@
+@@ -0,0 +1,184 @@
 +// Kart64 web bridge: the handful of C entry points the page needs beyond the
 +// touch pad (src/main.c). Emscripten only; every function here is exported
 +// with EMSCRIPTEN_KEEPALIVE and called from index.html through Module._name.
@@ -877,6 +1303,8 @@ index 000000000..bb3b08d87
 +
 +#include <libultraship.h>
 +#include <libultraship/bridge/consolevariablebridge.h>
++#include "engine/TrackBrowser.h"
++#include "port/Game.h"
 +
 +extern "C" {
 +#include "main.h"
@@ -884,6 +1312,8 @@ index 000000000..bb3b08d87
 +#include "defines.h"
 +#include "code_800029B0.h"
 +#include "code_80057C60.h"
++#include "menu_items.h"
++#include "audio/external.h"
 +}
 +
 +extern "C" {
@@ -1045,6 +1475,74 @@ index 000000000..bb3b08d87
 +
 +} // extern "C"
 +#endif // __EMSCRIPTEN__
+diff --git a/src/port/pak.cpp b/src/port/pak.cpp
+index 4adedd6a0..b878ee254 100644
+--- a/src/port/pak.cpp
++++ b/src/port/pak.cpp
+@@ -13,6 +13,18 @@
+ #include <save.h>
+ #include <cstdio>
+ 
++#ifdef __EMSCRIPTEN__
++extern "C" const char* Kart64_GetSavePrefix(void);
++#endif
++
++static std::string PakPath(const std::string& filename) {
++#ifdef __EMSCRIPTEN__
++    return Ship::Context::GetPathRelativeToAppDirectory(std::string(Kart64_GetSavePrefix()) + filename);
++#else
++    return Ship::Context::GetPathRelativeToAppDirectory(filename);
++#endif
++}
++
+ #define MAX_FILES 16
+ #define EXT_NAME_SIZE 4
+ #define GAME_NAME_SIZE 16
+@@ -23,11 +35,11 @@ typedef struct ControllerPak {
+ } ControllerPak;
+ 
+ std::string Pfs_PakFile_GetPath(u8 file_no) {
+-    return Ship::Context::GetPathRelativeToAppDirectory(fmt("controllerPak_file_{}.sav", file_no));
++    return PakPath(fmt("controllerPak_file_{}.sav", file_no));
+ }
+ 
+ std::string Pfs_PakHeader_GetPath() {
+-    return Ship::Context::GetPathRelativeToAppDirectory("controllerPak_header.sav");
++    return PakPath("controllerPak_header.sav");
+ }
+ 
+ bool Pfs_PakHeader_Write(u32* file_size, u32* game_code, u16* company_code, u8* ext_name, u8* game_name, u8 fileIndex) {
+diff --git a/src/racing/race_logic.c b/src/racing/race_logic.c
+index 2cfda0cea..974de1633 100644
+--- a/src/racing/race_logic.c
++++ b/src/racing/race_logic.c
+@@ -1,3 +1,6 @@
++#ifdef __EMSCRIPTEN__
++#include "port/kart64_courses.h"
++#endif
+ #include <libultraship.h>
+ #include <stdio.h>
+ #include <macros.h>
+@@ -1012,6 +1015,9 @@ void func_8028FCBC(void) {
+             if (D_802BA038 != 0) {
+                 D_802BA038--;
+             } else {
++#ifdef __EMSCRIPTEN__
++                if (Kart64_CustomSingleRace()) { Kart64_OpenCustomResults(); break; }
++#endif
+                 switch (gModeSelection) {
+                     case GRAND_PRIX:
+                         if (D_80150120 != 0) {
+@@ -1043,6 +1049,9 @@ void func_8028FCBC(void) {
+             }
+             break;
+         case RACE_EXIT:
++#ifdef __EMSCRIPTEN__
++            Kart64_CustomResultsInput();
++#endif
+             break;
+     }
+ }
 diff --git a/src/render_objects.c b/src/render_objects.c
 index 54b36625a..7f6089272 100644
 --- a/src/render_objects.c

@@ -18,8 +18,8 @@ make deploy
 This builds incrementally, assembles the deployable files, and replaces the
 `gh-pages` branch on `origin` with a single site commit.
 
-To publish the existing engine build, with the current browser page copied
-into it:
+To publish the existing engine build, with the current browser page and course
+files copied into it:
 
 ```sh
 make deploy/no-build
@@ -34,7 +34,7 @@ make dist
 ```
 
 Upload the resulting `dist/` directory to an HTTPS host. The assembly script
-uses an explicit file list.
+uses an explicit file list, including the bundled course and its gallery.
 ROMs and extracted `mk64.o2r` assets are excluded from deployment.
 
 The Mario Raceway phone showcase under `media/` is presented in the GitHub
