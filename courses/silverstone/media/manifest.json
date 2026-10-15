@@ -1,0 +1,310 @@
+{
+  "version": "1.9.0",
+  "video": {
+    "file": "silverstone-mario-full-lap.mp4",
+    "kind": "Native AI-assisted Mario showcase, second complete GP lap of a three-lap v1.9 run; not browser footage",
+    "bytes": 16192446,
+    "sha256": "481d7adfefafdedd2cc9abcbf71e76607a21ba8271de8b28a8290176e0af5fc7",
+    "duration_seconds": 126.583333,
+    "width": 960,
+    "height": 540,
+    "fps": 24,
+    "codec": "H.264",
+    "audio": "AAC stereo 64 kbit/s; original game audio",
+    "speed_unchanged": true,
+    "source_lap": 2
+  },
+  "screenshots": [
+    {
+      "title": "Starting grid",
+      "file": "screenshots/starting-grid.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": null,
+      "source_three_lap_video_seconds": 7.059,
+      "width": 960,
+      "height": 540,
+      "bytes": 40694,
+      "sha256": "be5ef06227131c0841f7214ea7c26e0360338db9e8b2eb1a80c98c7c1e029d2e"
+    },
+    {
+      "title": "Hamilton Straight",
+      "file": "screenshots/hamilton-straight.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 182.447,
+      "width": 960,
+      "height": 540,
+      "bytes": 28330,
+      "sha256": "f8e1a303c54e68871a0bdcf0c885479d3a42609794ee75566db3b515e2358187"
+    },
+    {
+      "title": "Abbey",
+      "file": "screenshots/abbey.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 186.629,
+      "width": 960,
+      "height": 540,
+      "bytes": 32736,
+      "sha256": "b0e431bba6f473f646a9a4d769dde1226e341ac10965b5873e1484f04cc1f42b"
+    },
+    {
+      "title": "Farm",
+      "file": "screenshots/farm.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 190.689,
+      "width": 960,
+      "height": 540,
+      "bytes": 26968,
+      "sha256": "8929661d1cc30790b904c8fbfe37ca9631d92a8cae66716a049460426dced5f9"
+    },
+    {
+      "title": "Village",
+      "file": "screenshots/village.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 197.06,
+      "width": 960,
+      "height": 540,
+      "bytes": 35768,
+      "sha256": "de388bb7f148a299b33d366491b942f4f5256a9fdfce8a514318b1211a48eb6a"
+    },
+    {
+      "title": "The Loop",
+      "file": "screenshots/the-loop.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 200.199,
+      "width": 960,
+      "height": 540,
+      "bytes": 31206,
+      "sha256": "5c283927c310c838284675853acf664a90e10602e94b32739a50938574c3a30a"
+    },
+    {
+      "title": "Aintree",
+      "file": "screenshots/aintree.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 203.753,
+      "width": 960,
+      "height": 540,
+      "bytes": 26714,
+      "sha256": "727f4cfe73813a2ae9549d947b0230d54e368adb3e8e5768dcefb9fdc91fb329"
+    },
+    {
+      "title": "Brooklands",
+      "file": "screenshots/brooklands.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 219.992,
+      "width": 960,
+      "height": 540,
+      "bytes": 35458,
+      "sha256": "18616b411340ec6639cb5044930e6592ba082123b0bfd8f2ce4a4b6fceb96898"
+    },
+    {
+      "title": "Luffield",
+      "file": "screenshots/luffield.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 225.379,
+      "width": 960,
+      "height": 540,
+      "bytes": 39454,
+      "sha256": "1e2f880a89f4b58aecf7bd7d82caf993d936fe8c9171effb8562c368c3a01ec9"
+    },
+    {
+      "title": "Woodcote",
+      "file": "screenshots/woodcote.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 231.994,
+      "width": 960,
+      "height": 540,
+      "bytes": 34224,
+      "sha256": "4f068a04236c9c3c23b193e71ce3684c9217ca30388b84bcbd044b133c293dd3"
+    },
+    {
+      "title": "National Straight gantry",
+      "file": "screenshots/national-straight-gantry.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 237.167,
+      "width": 960,
+      "height": 540,
+      "bytes": 30176,
+      "sha256": "8dbf108ade6d6e2b74b9062e85398379675d30bea8b9a73a9d6a6ee2b2add78e"
+    },
+    {
+      "title": "Copse",
+      "file": "screenshots/copse.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 243.041,
+      "width": 960,
+      "height": 540,
+      "bytes": 32346,
+      "sha256": "c828fbe1c71ca4ee708c25d41f5f31e5bbd350ce9e3bd57cb9e1e5dc3ed6665f"
+    },
+    {
+      "title": "Maggotts",
+      "file": "screenshots/maggotts.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 256.024,
+      "width": 960,
+      "height": 540,
+      "bytes": 27308,
+      "sha256": "35ad8c523eb74b0355cfcfa1a9397b626cad87c4156fefa5f06c8b639fd2bf3e"
+    },
+    {
+      "title": "Becketts",
+      "file": "screenshots/becketts.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 262.51,
+      "width": 960,
+      "height": 540,
+      "bytes": 34750,
+      "sha256": "b29f35e3365943154507ebcbc1024c3421a5460d7e80243a20ce9c2bf3da09c3"
+    },
+    {
+      "title": "Chapel",
+      "file": "screenshots/chapel.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 265.853,
+      "width": 960,
+      "height": 540,
+      "bytes": 24456,
+      "sha256": "9bb6c3ee59788b34adcb7c868bb33b3554ce4ac77e4d565755ccc5b0f100c183"
+    },
+    {
+      "title": "Stowe",
+      "file": "screenshots/stowe.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 283.495,
+      "width": 960,
+      "height": 540,
+      "bytes": 28524,
+      "sha256": "5eb3fd6345f68ce92385c5c6d994b59ffeaa3b193167e2a926dd5a183dcaf650"
+    },
+    {
+      "title": "Vale",
+      "file": "screenshots/vale.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 293.132,
+      "width": 960,
+      "height": 540,
+      "bytes": 36844,
+      "sha256": "5e16f0d96a5907a8036a3aed4d8e396b04f4dfd70ea824ee6ad223fd984a5457"
+    },
+    {
+      "title": "Club",
+      "file": "screenshots/club.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 297.713,
+      "width": 960,
+      "height": 540,
+      "bytes": 33160,
+      "sha256": "c9d8f3cda1f788e276a2f9ae37fd949dd8b88357fb0cf7e6daa937600a91797e"
+    },
+    {
+      "title": "Wellington Straight",
+      "file": "screenshots/wellington-straight.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 212.37,
+      "width": 960,
+      "height": 540,
+      "bytes": 27686,
+      "sha256": "ae272b4a563e4ba5e1d4fa94fa630d0de13707b83866c9726dc52bac07927a81"
+    },
+    {
+      "title": "Hangar Straight",
+      "file": "screenshots/hangar-straight.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 275.39,
+      "width": 960,
+      "height": 540,
+      "bytes": 25458,
+      "sha256": "e44282d088319ef74c4d52aaae5df431762deec1ef893d39974f5b93827e40b8"
+    },
+    {
+      "title": "Wing and pit rejoin",
+      "file": "screenshots/wing-and-pit-rejoin.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": 2,
+      "source_three_lap_video_seconds": 300.958,
+      "width": 960,
+      "height": 540,
+      "bytes": 41534,
+      "sha256": "febfa9a06ab2fd3733104fcddffcf08cf3a636aa7344e32e9ee376f232e693fd"
+    },
+    {
+      "title": "Three laps complete",
+      "file": "screenshots/three-laps-complete.webp",
+      "kind": "Native AI-assisted gameplay",
+      "source_lap": null,
+      "source_three_lap_video_seconds": 429.589,
+      "width": 960,
+      "height": 540,
+      "bytes": 42826,
+      "sha256": "0c0ec15e65711568e02c267b5a53f37ea60038505ce6f69c7692ef99e928d404"
+    },
+    {
+      "title": "Whole circuit \u2014 top-down",
+      "file": "screenshots/full-track-topdown.webp",
+      "kind": "Blender overview render",
+      "width": 1280,
+      "height": 800,
+      "bytes": 34164,
+      "sha256": "5bcdd42044f9b669ba6216d7572c982b49015be21b399afbfd1bce69e4666a29"
+    },
+    {
+      "title": "Whole circuit \u2014 overview",
+      "file": "screenshots/silverstone-overview.webp",
+      "kind": "Blender overview render",
+      "width": 1280,
+      "height": 800,
+      "bytes": 38602,
+      "sha256": "77398276f5cfc275bb211e2d9e624a2234fa22019fa5e1c9b1045f5a9bc5a74f"
+    }
+  ],
+  "comparison": {
+    "title": "Verstappen vs Mario",
+    "video": {
+      "file": "silverstone-verstappen-vs-mario.mp4",
+      "bytes": 29184564,
+      "sha256": "9f906f82335bf97c8ba5a9826696d9a01183551d4307821d7540c04a9ccad164",
+      "duration_seconds": 87.9,
+      "width": 1920,
+      "height": 720,
+      "fps": 30,
+      "codec": "H.264",
+      "audio": "AAC; original F1 audio only"
+    },
+    "poster": {
+      "file": "comparison-poster.webp",
+      "bytes": 102484,
+      "sha256": "25301d80a98dcf36438c66f3fd285f5d1082f267161d69d0bf8343417a13556e"
+    },
+    "synchronization": {
+      "file": "comparison-sync.json",
+      "bytes": 5444,
+      "sha256": "a15d45c48660e9cfd1bf0619ba616b4fb661118f872a15790a0c7dd0b173e28f"
+    },
+    "checkpoints": 23,
+    "f1_speed_unchanged": true,
+    "mario_retimed": true,
+    "mario_capture": "Native AI-assisted Silverstone v1.9, second complete GP lap of a three-lap capture; not browser footage",
+    "alignment": "Approximate visual landmarks; stylised geometry and different cameras",
+    "f1_source_url": "https://www.formula1.com/en/video/onboard-max-verstappens-2025-pirelli-pole-position-award-lap-at-the-british-grand-prix.1836826066949110291",
+    "mario_source_lap": 2
+  }
+}

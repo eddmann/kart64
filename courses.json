@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "courses": [
+    {
+      "id": "silverstone",
+      "title": "Silverstone",
+      "archive": "courses/silverstone/silverstone-v1.9.o2r"
+    }
+  ]
+}
