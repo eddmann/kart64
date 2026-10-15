@@ -38,7 +38,7 @@ and hold to drift, and swipe to throw items. Full screen fills the display
 while racing; menus and results keep their 4:3 layout.
 
 The [playing guide](docs/playing.md) covers phone menus, Tour gestures,
-and full-screen options. Optional
+full-screen options, and custom course selection. Optional
 [texture packs](docs/texture-packs.md) give the tracks and characters a sharper
 finish, with lighter cuts suited to phones.
 
@@ -66,14 +66,29 @@ https://github.com/user-attachments/assets/af517acd-9206-4ee4-a220-3ba7752af3ed
 
 [See the modes side by side through a second-lap drift, with all three complete videos](media/mario-raceway/README.md).
 
+## Custom courses
+
+Beyond the original cups, take the karts to
+[Silverstone](courses/silverstone/README.md), an editable custom course with a
+Wing pit shortcut. Race a standalone Grand Prix against seven CPU rivals or
+chase a better Time Trial with separate records and ghosts. The
+[playing guide](docs/playing.md#custom-courses) explains how to find it in the
+game; [courses/](courses/README.md) contains the editing projects and build notes.
+
+**Max versus Mario:** Verstappen's 2025 British GP pole lap from the
+[official Formula 1 onboard](https://www.formula1.com/en/video/onboard-max-verstappens-2025-pirelli-pole-position-award-lap-at-the-british-grand-prix.1836826066949110291),
+side by side with Mario on Silverstone.
+
+https://github.com/user-attachments/assets/39655fb9-7ccf-4657-acf8-3cdd263c881f
+
 ## Documentation
 
 | Guide | What you’ll find |
 |---|---|
-| [Playing Kart64](docs/playing.md) | Phone setup, Tour controls, and screen modes |
+| [Playing Kart64](docs/playing.md) | Phone setup, Tour controls, screen modes, and custom courses |
 | [Texture packs](docs/texture-packs.md) | Loading packs and making lighter versions for phones |
 | [Development](docs/development.md) | Repository layout, local builds, and engine patches |
-| [Testing](docs/testing.md) | Startup, layout, ROM, and race checks |
+| [Testing](docs/testing.md) | Startup, layout, ROM, race, and course checks |
 | [Deployment](docs/deployment.md) | GitHub Pages, static hosting, and cross-origin isolation |
 
 ROM files and extracted game assets are never committed or deployed. Each

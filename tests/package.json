@@ -5,7 +5,8 @@
     "gate": "node gate-test.mjs",
     "rom": "node rom-test.mjs",
     "layout": "node layout-test.mjs",
-    "race": "node race-test.mjs"
+    "race": "node race-test.mjs",
+    "course": "node course-test.mjs"
   },
   "engines": {
     "node": ">=24"

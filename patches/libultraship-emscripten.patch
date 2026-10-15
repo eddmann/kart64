@@ -182,6 +182,46 @@ index 028c3cc4..7aea787c 100644
      while (!mShaderStack.empty()) {
          mShaderStack.pop();
      }
+diff --git a/src/libultraship/libultra/os_eeprom.cpp b/src/libultraship/libultra/os_eeprom.cpp
+index 14541a62..84e6e83c 100644
+--- a/src/libultraship/libultra/os_eeprom.cpp
++++ b/src/libultraship/libultra/os_eeprom.cpp
+@@ -1,5 +1,17 @@
+ #include "libultraship/libultraship.h"
+ 
++#ifdef __EMSCRIPTEN__
++extern "C" const char* Kart64_GetSavePrefix(void);
++#endif
++
++static std::string EepromFile() {
++#ifdef __EMSCRIPTEN__
++    return Ship::Context::GetPathRelativeToAppDirectory(std::string(Kart64_GetSavePrefix()) + "default.sav");
++#else
++    return Ship::Context::GetPathRelativeToAppDirectory("default.sav");
++#endif
++}
++
+ extern "C" {
+ 
+ int32_t osEepromProbe(OSMesgQueue* mq) {
+@@ -10,7 +22,7 @@ int32_t osEepromLongRead(OSMesgQueue* mq, uint8_t address, uint8_t* buffer, int3
+     u8 content[512];
+     s32 ret = -1;
+ 
+-    const std::string save_file = Ship::Context::GetPathRelativeToAppDirectory("default.sav");
++    const std::string save_file = EepromFile();
+     FILE* fp = fopen(save_file.c_str(), "rb");
+     if (fp == NULL) {
+         return -1;
+@@ -35,7 +47,7 @@ int32_t osEepromLongWrite(OSMesgQueue* mq, uint8_t address, uint8_t* buffer, int
+     }
+     memcpy(content + address * 8, buffer, length);
+ 
+-    const std::string save_file = Ship::Context::GetPathRelativeToAppDirectory("default.sav");
++    const std::string save_file = EepromFile();
+     FILE* fp = fopen(save_file.c_str(), "wb");
+     if (fp == NULL) {
+         return -1;
 diff --git a/src/ship/audio/SDLAudioPlayer.cpp b/src/ship/audio/SDLAudioPlayer.cpp
 index d9f1e44d..e4fc5c69 100644
 --- a/src/ship/audio/SDLAudioPlayer.cpp

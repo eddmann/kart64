@@ -25,6 +25,9 @@ if [ "${1:-}" != "--no-build" ]; then
   WORK="$WORK" "$ROOT/scripts/build.sh" >/dev/null   # also copies web/ into the build
 else
   cp "$ROOT"/web/* "$BUILD/"
+  mkdir -p "$BUILD/courses/silverstone"
+  cp "$ROOT/courses/silverstone/runtime/silverstone-v1.9.o2r" "$BUILD/courses/silverstone/"
+  cp -R "$ROOT/courses/silverstone/media" "$BUILD/courses/silverstone/"
 fi
 
 TMP=$(mktemp -d)

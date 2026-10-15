@@ -1,0 +1,752 @@
+{
+  "asphalt": {
+    "file": "asphalt.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original detailed seamless surface; reference pack quality/scale study",
+    "sha256": "7a6d17f996c274a773beb9009917964b0a2c95708d6a38779982d64d8d683ede"
+  },
+  "grass": {
+    "file": "grass.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original detailed seamless surface; reference pack quality/scale study",
+    "sha256": "dae250c2207a9bcec8000ed029d8fa4753c661fd606d523ce158e1f7e4e69ec3"
+  },
+  "gravel": {
+    "file": "gravel.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original detailed seamless surface; reference pack quality/scale study",
+    "sha256": "8d0b6d4543c5d84c69b89d351ab5c3cff215daa0bf348aca22c06fc39c287795"
+  },
+  "concrete": {
+    "file": "concrete.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original detailed seamless surface; reference pack quality/scale study",
+    "sha256": "5159228926a14c213833dc5941b5f0162bd65a334e52d65fd177fd245be9002d"
+  },
+  "leaves": {
+    "file": "leaves.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original detailed seamless surface; reference pack quality/scale study",
+    "sha256": "7a7fea3cbaeca36f3baa616b03bed2ac277add70afe7abf67f30c3babbfd6af0"
+  },
+  "service_asphalt": {
+    "file": "service_asphalt.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original detailed seamless surface; reference pack quality/scale study",
+    "sha256": "cf7f2258d8357100d36171b95f15de9fdc544efa05deee24660da39eff2b5785"
+  },
+  "dirt": {
+    "file": "dirt.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original detailed seamless surface; reference pack quality/scale study",
+    "sha256": "ca398fd42fbee5ea9d8be33e46eacd3de4ca9bf124611f6723d5e9abdd5e047e"
+  },
+  "runoff_blue": {
+    "file": "runoff_blue.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original detailed seamless surface; reference pack quality/scale study",
+    "sha256": "a0284c4290e1918c4a4d45b579f8ecca023ef6a52a4889be7bd165b587c1cb00"
+  },
+  "structural_concrete": {
+    "file": "structural_concrete.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original architectural or natural material detail",
+    "sha256": "a7a5c4b5e81a8f9421aac6fccbc246a74db1d27073a29b01ea70731f0e6a0750"
+  },
+  "Roof": {
+    "file": "Roof.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original architectural or natural material detail",
+    "sha256": "49639e10d20f04f30b597a28e2befe568a4c0d9dc04ef56d963871866b0adf37"
+  },
+  "Silver": {
+    "file": "Silver.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original architectural or natural material detail",
+    "sha256": "146ce1c2c65889e7fa549afff033618c6840c621f547ec4d20bd6e858e349de6"
+  },
+  "Rubber": {
+    "file": "Rubber.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original architectural or natural material detail",
+    "sha256": "1aad405feece2e0db78b3e6d7d54b02f2d453c8b5b94eda34c017977d390a28d"
+  },
+  "Bark": {
+    "file": "Bark.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original architectural or natural material detail",
+    "sha256": "26163f3f4da49a28a07ffb1d0f30040c8ce42e547f86d899ee1b821588f49a60"
+  },
+  "glass": {
+    "file": "glass.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Reflective window panels, recessed mullions and restrained diagonal highlights",
+    "sha256": "0a4ab4ba59750e636c9a595297a17a6a688eb92e3c70430c4d18df221f25a604"
+  },
+  "garage": {
+    "file": "garage.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Steel roller-door ribs, header fascia, frame and inset handle",
+    "sha256": "40635b2aaf8444a63bacbd985a718b33384b80c7dcc4a8b279e7eaff031d193f"
+  },
+  "crowd": {
+    "file": "crowd.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original crowd rows with distinct clothing, heads and seating",
+    "sha256": "99ada4695bd6266c46caf693f91c900a85a9f66ec975c8d849e269231d711dc4"
+  },
+  "fence": {
+    "file": "fence.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Thin low-contrast catch-fence wires with a transparent background",
+    "sha256": "4fe207918ec7df3eea4940c42770683a54a67f1221305823cce729205636f789"
+  },
+  "cloud": {
+    "file": "cloud.png",
+    "size": [
+      1024,
+      512
+    ],
+    "logical_size": [
+      64,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Smooth original cumulus silhouettes with soft edges and blue shaded undersides",
+    "sha256": "2bc68d377ce76f65115842f0d2fc785bc75d077953a640ca17d30f89589991f5"
+  },
+  "spectators": {
+    "file": "spectators.png",
+    "size": [
+      512,
+      512
+    ],
+    "logical_size": [
+      32,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original standing people, hair, clothes and shoes in the existing silhouette atlas",
+    "sha256": "d27f24f170adec33412dd2496e6883114f21a7838783e60c99bbd16ed52d3299"
+  },
+  "garage_numbers": {
+    "file": "garage_numbers.png",
+    "size": [
+      1024,
+      512
+    ],
+    "logical_size": [
+      64,
+      32
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "High-resolution pit-bay number atlas, preserving the original UV regions",
+    "sha256": "82c37e79f30ce42e3c6a6e846dee4717c7d5b8cf0b7472bf9527416392aa0083"
+  },
+  "sign_silverstone": {
+    "file": "sign_silverstone.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: SILVERSTONE",
+    "sha256": "ede32779c7d9208feee4585970f3dbaecf37fc7513bb16ef125ed35987ba7f93"
+  },
+  "sign_the_wing": {
+    "file": "sign_the_wing.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: THE WING",
+    "sha256": "4be77142e107d26fd9581ea9d2567558633254a88418f10742f098cc5fd80db9"
+  },
+  "sign_pit_lane": {
+    "file": "sign_pit_lane.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: PIT LANE",
+    "sha256": "c4fe2ee90e104e88d0d95fa834f14c3a9431934ba0464813c120bc958137b8a4"
+  },
+  "sign_national_pits": {
+    "file": "sign_national_pits.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: NATIONAL PITS",
+    "sha256": "0d201e8baeedd243ce4dc554445797005b0f2f763552fc4a8b537c363df90922"
+  },
+  "sign_welcome": {
+    "file": "sign_welcome.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: WELCOME",
+    "sha256": "a3e4e647ecc9770af3caff97a8ca3647a505c789014ee10224d9a3ff2fbb4f67"
+  },
+  "sign_kart64": {
+    "file": "sign_kart64.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: KART64",
+    "sha256": "5bfdc5b537b9c9b5cfbbd1d71921f58fbccfb07fd5814b8e2953159258d7b593"
+  },
+  "sign_abbey": {
+    "file": "sign_abbey.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: ABBEY",
+    "sha256": "389de77007aea4550e2adece6f0c89432c31d91bda5e5609a9e15836b59c18bb"
+  },
+  "sign_farm": {
+    "file": "sign_farm.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: FARM",
+    "sha256": "2bdddb9dced4234f4fd4cd81bd19656c7416a5269e1ca5a57156ab74e4b49b3c"
+  },
+  "sign_village": {
+    "file": "sign_village.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: VILLAGE",
+    "sha256": "3f6b6febb52c8f8fd174629cc1f5e09108ac6c96f59f173bb34999e393c46fde"
+  },
+  "sign_the_loop": {
+    "file": "sign_the_loop.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: THE LOOP",
+    "sha256": "09e4354cc39933aed642091a5756cd85be8bae04d0d5f486dbdea71518058da9"
+  },
+  "sign_aintree": {
+    "file": "sign_aintree.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: AINTREE",
+    "sha256": "4c6c6a866ffbe63323bfc9098e70ac651a08784c563ec4aa74bdc87a64286150"
+  },
+  "sign_brooklands": {
+    "file": "sign_brooklands.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: BROOKLANDS",
+    "sha256": "6e144fcab75034492cdad5e41d54969232c311b50e0f2a9da0a7f212237de5b2"
+  },
+  "sign_luffield": {
+    "file": "sign_luffield.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: LUFFIELD",
+    "sha256": "b229dbdfb98273324e49f24a7c65545bcf114cd85aa02aa12104e4faf7e5d702"
+  },
+  "sign_woodcote": {
+    "file": "sign_woodcote.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: WOODCOTE",
+    "sha256": "a2224ad4f41e0212a85268b82215d4a5dc982ddc44e8d6af8f2950df97adf8f2"
+  },
+  "sign_copse": {
+    "file": "sign_copse.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: COPSE",
+    "sha256": "4431cf8dc121ddbc17526683b8a6ebfce75ffbde105a019de383a66595e404de"
+  },
+  "sign_maggotts": {
+    "file": "sign_maggotts.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: MAGGOTTS",
+    "sha256": "b6b9f3f5bfb077cdab1a420558890478c5c05bfc0ceea711e41226d7f5f17fe3"
+  },
+  "sign_becketts": {
+    "file": "sign_becketts.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: BECKETTS",
+    "sha256": "01782e81954d2524751f70d2297192d654ba965290b886aabc99de80222d94a5"
+  },
+  "sign_chapel": {
+    "file": "sign_chapel.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: CHAPEL",
+    "sha256": "c2d1a7553782d84d04c607c2f8c66bcd9bbeffa7c0456513ae546ec78499efd0"
+  },
+  "sign_stowe": {
+    "file": "sign_stowe.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: STOWE",
+    "sha256": "3c51dc6b3d028c2b55aba6a34ab0958cfbdb94d2b4d14352e27397c27aee7d66"
+  },
+  "sign_vale": {
+    "file": "sign_vale.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: VALE",
+    "sha256": "a3121602ac996a804ed65304237767070529d2a1c7d2c2920bdfbdc33c44cce6"
+  },
+  "sign_club": {
+    "file": "sign_club.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: CLUB",
+    "sha256": "0e5371084c75ab457271b70f3e92a52f6c89caac2fcbbfbe07f7624ff4230366"
+  },
+  "sign_150": {
+    "file": "sign_150.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: 150",
+    "sha256": "b38931f26d6ec8171be188dcaaf220b78c499a76e514a3511fdff5342dad04c6"
+  },
+  "sign_100": {
+    "file": "sign_100.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: 100",
+    "sha256": "174aeb30bb40b00c45453bd9b6ae454b3c2ce201fba72db6e5a09b41635458e0"
+  },
+  "sign_50": {
+    "file": "sign_50.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: 50",
+    "sha256": "9b6a9a8a6938bc122f8621355b15a25f5c1521cc75fdc7c1a15997de78191e21"
+  },
+  "sign_paddock": {
+    "file": "sign_paddock.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: PADDOCK",
+    "sha256": "aa9d2f69ee384a2f73fd307742a28a22db05b75fd4a5ea0650fcfdea3fa5c7f2"
+  },
+  "sign_pit_exit": {
+    "file": "sign_pit_exit.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: PIT EXIT",
+    "sha256": "1820e0bcd09a4fa097b07ca73ea758aa03406ca59a78f68eaa91b600a5442ccb"
+  },
+  "sign_cafe": {
+    "file": "sign_cafe.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: CAFE",
+    "sha256": "6c7a77d1bf878dc2bec1f86e5b557a4722a2843bbb3d0f2fcd5c667b17c9301c"
+  },
+  "sign_race_control": {
+    "file": "sign_race_control.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: RACE CONTROL",
+    "sha256": "aa8370ee388863254964493317fb12f6df57f5b0256f7fa7f03a2bbefaf5963d"
+  },
+  "sign_fan_zone": {
+    "file": "sign_fan_zone.png",
+    "size": [
+      1024,
+      256
+    ],
+    "logical_size": [
+      64,
+      16
+    ],
+    "scale": 16,
+    "original": true,
+    "purpose": "Original vector-redrawn HD lettering: FAN ZONE",
+    "sha256": "5c04a2e38f91bc206ef8a5faab57cd0ed02264633fb2f23017be94eb245597b0"
+  },
+  "event_screen": {
+    "file": "event_screen.png",
+    "size": [
+      1024,
+      512
+    ],
+    "original": true,
+    "purpose": "Original static event display: GP outline and timing-board motif",
+    "sha256": "e1e8b95e0dadefd06a023d248845afb65c0125777db5a8e1882352414fdcd85a",
+    "logical_size": [
+      64,
+      32
+    ],
+    "scale": 16
+  }
+}

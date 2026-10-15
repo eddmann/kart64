@@ -15,6 +15,7 @@ patches/   changes to upstream SpaghettiKart and libultraship
 web/       ROM intake, extraction, layout, touch controls and browser assets
 scripts/   build, serving, deployment, patch regeneration and pack trimming
 tests/     Playwright harnesses
+courses/   editable courses, original textures, generators and build notes
 media/     phone-mode screenshots and complete source recordings
 docs/      playing, texture packs, development, testing and deployment
 ```
@@ -52,7 +53,8 @@ to update `patches/`; extracted ROM assets can generate headers in the upstream
 tree that should not enter a patch.
 
 For frontend changes, edit `web/` and rerun `make build` to copy the page
-into the build directory.
+into the build directory. For course editing and rebuilding, see
+[courses/](../courses/README.md).
 
 ## Game assets stay local
 

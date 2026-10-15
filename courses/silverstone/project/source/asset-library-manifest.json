@@ -1,0 +1,29 @@
+{
+  "models": [
+    "Wing module",
+    "Covered grandstand",
+    "Open grandstand",
+    "National garages",
+    "Control tower",
+    "Marshal hut",
+    "Broadleaf tree",
+    "Tyre barrier",
+    "Service vehicle",
+    "Paddock tent",
+    "Start gantry",
+    "Flagpole",
+    "Lighting mast",
+    "Pit trolley",
+    "Concession kiosk",
+    "Picnic table",
+    "Airfield windsock",
+    "Pit service boom",
+    "Camera platform",
+    "Armco rail module",
+    "Grouped stand module",
+    "Spectator bank",
+    "Overhead advertising gantry",
+    "Event display board"
+  ],
+  "unit_scale_metres": 16.666666666666668
+}

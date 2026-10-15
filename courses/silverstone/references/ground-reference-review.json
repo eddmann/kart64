@@ -1,0 +1,41 @@
+{
+  "edition": "1.3.0",
+  "reviewed": "2026-10-03",
+  "interpretation": "Stylised summer/dry-weather environment, not a surveyed replica",
+  "sources": [
+    {
+      "url": "https://oversteer48.com/silverstone-copse-corner/",
+      "observed": "Large gravel/asphalt safety areas, paved spectator circulation, mixed green and worn straw grass"
+    },
+    {
+      "url": "https://oversteer48.com/silverstone-stowe-corner/",
+      "observed": "2026 Landostand photographs show compacted pedestrian paths and extensive dry, mottled grass"
+    },
+    {
+      "url": "https://oversteer48.com/village-corner-silverstone/",
+      "observed": "Broad grey paved runoff surrounding the corner, dry grass islands"
+    },
+    {
+      "url": "https://oversteer48.com/silverstone-becketts/",
+      "observed": "Long open sightlines, dry verges and service access around spectator facilities"
+    },
+    {
+      "url": "https://oversteer48.com/silverstone-luffield-corner/",
+      "observed": "Wide gravel, painted safety aprons, asphalt and worn grass around the curved section"
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Silverstone_Circuit,_July_2,_2018_SkySat_(cropped).jpg",
+      "observed": "2018 aerial used for compound/woodland/service-road structure, not as evidence of current grass colour"
+    }
+  ],
+  "implemented": [
+    "Olive/straw grass palette and continuous patch colouring",
+    "Paved Wing and National compounds",
+    "Grandstand forecourts and compacted-earth surrounds",
+    "Separated service-road segments",
+    "Painted/tarmac/gravel runoff bands and worn outer verges",
+    "More existing trees concentrated at Copse; fewer at Stowe"
+  ],
+  "photographs_used_as_textures": false,
+  "physical_runoff_note": "New external surface panels are non-collidable scenery; enclosing race barriers remain in place"
+}

@@ -7,6 +7,7 @@ WORK ?= $(HOME)/kart64-work
 BUILD_DIR := $(WORK)/SpaghettiKart/build/emscripten
 PORT ?= 8099
 PACK_ARGS ?= --scale 0.5 --kart-scale 0.375
+COURSE_O2R := courses/silverstone/runtime/silverstone-v1.9.o2r
 
 ##@ Setup
 
@@ -36,7 +37,7 @@ lint: ## Check script syntax and that no ROM-derived files are tracked
 	@for f in scripts/*.sh; do bash -n "$$f"; done
 	@python3 -c 'import ast, sys; [ast.parse(open(f).read(), f) for f in sys.argv[1:]]' scripts/*.py media/mario-raceway/generate.py
 	@for f in tests/*.mjs web/coi-sw.js; do node --check "$$f"; done
-	@if git ls-files | grep -iE '\.(z64|v64|n64|o2r)$$|(^|/)baserom'; then \
+	@if git ls-files | grep -iE '\.(z64|v64|n64|o2r)$$|(^|/)baserom' | grep -vx '$(COURSE_O2R)'; then \
 		printf '\033[31mROM-derived files are tracked; remove them from Git.\033[0m\n' >&2; exit 1; \
 	fi
 	@echo "Lint: PASS"
@@ -55,6 +56,9 @@ test/rom: _require_build _require_rom ## Run ROM extraction checks (ROM=path/to/
 
 test/race: _require_build _require_rom ## Run full races with touch input (ROM=path/to/mk64.z64)
 	cd tests && ROM_PATH="$(ROM)" node race-test.mjs "$(BUILD_DIR)"
+
+test/course: _require_build _require_rom ## Run the Silverstone course checks (ROM=path/to/mk64.z64)
+	cd tests && ROM_PATH="$(ROM)" node course-test.mjs "$(BUILD_DIR)"
 
 ##@ Build/Deploy
 

@@ -1,0 +1,43 @@
+{
+  "retrieved": "2026-10-03",
+  "references": [
+    {
+      "file": "silverstone-layout.geojson",
+      "source_url": "https://raw.githubusercontent.com/bacinger/f1-circuits/master/circuits/gb-1948.geojson"
+    },
+    {
+      "file": "circuit-data-LICENSE.txt",
+      "source_url": "https://raw.githubusercontent.com/bacinger/f1-circuits/master/LICENSE.md"
+    },
+    {
+      "file": "silverstone-wing-aerial.jpg",
+      "source_url": "https://www.silverstone.co.uk/sites/default/files/images/Hoodpin_Silverstone_004_-5%20%281%29.jpg"
+    },
+    {
+      "file": "silverstone-official-map-2025.pdf",
+      "source_url": "https://www.silverstone.co.uk/sites/default/files/pdf/British%20Grand%20Prix%202025%20Map.pdf"
+    },
+    {
+      "file": "f1-current-circuit-map.webp",
+      "source_url": "https://www.formula1.com/en/latest/article/circuit-guide-everything-you-need-to-know-about-silverstone-2026.5Sl0O8g393enBWVIkjRzOr"
+    },
+    {
+      "file": "silverstone-satellite-2018.jpg",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Silverstone_Circuit,_July_2,_2018_SkySat_(cropped).jpg"
+    },
+    {
+      "file": "circuit-layout-2020.png",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Silverstone_Circuit_2020.png"
+    },
+    {
+      "file": "wing-building.jpg",
+      "source_url": "https://oversteer48.com/wp-content/uploads/2023/03/Silverstone-Wing-3.jpg",
+      "source_page": "https://oversteer48.com/silverstone-wing/"
+    },
+    {
+      "file": "wing-pitlane.jpg",
+      "source_url": "https://www.e-architect.com/wp-content/uploads/2011/05/silverstone-pitlane-520x347.jpg",
+      "source_page": "https://www.e-architect.com/england/silverstone-pit-paddock"
+    }
+  ]
+}

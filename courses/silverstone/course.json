@@ -1,0 +1,26 @@
+{
+  "id": "silverstone",
+  "title": "Silverstone",
+  "version": "1.9.0",
+  "target": "Native Spaghetti Kart and Kart64 WebAssembly",
+  "engine_commit": "aedcf9ada627f4f8e861f12d8b48f587de521e6b",
+  "blender_version": "4.3.2",
+  "fast64_commit": "0f7a80a6b40c73a8d65dd2dab37310c163f54c68",
+  "build_command": "python courses/silverstone/build.py",
+  "runtime_output": "build/silverstone-v1.9.o2r",
+  "main_project": "project/silverstone.blend",
+  "hd_editing_project": "project/silverstone-hd-preview.blend",
+  "model_libraries": [
+    "project/silverstone-fast64-assets.blend",
+    "project/silverstone-hd-assets.blend"
+  ],
+  "original_hd_textures": 50,
+  "reusable_models": 24,
+  "gp_waypoints": 842,
+  "optional_pit_shortcut": true,
+  "browser_integration_tested": true,
+  "documentation": "README.md",
+  "bundled_runtime": "runtime/silverstone-v1.9.o2r",
+  "web_mode": "Single-player Time Trials or standalone three-lap CPU race, with normal driver selection",
+  "optional_media": "media/manifest.json"
+}

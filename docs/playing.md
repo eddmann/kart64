@@ -46,4 +46,23 @@ Full screen is on by default on phones and off on desktop. On desktop, **F**
 turns it on together with the browser's own full screen; **Esc** leaves both.
 Tour always uses full screen while driving in portrait.
 
+## Custom courses
+
+Beyond the original cups, take the karts to
+[Silverstone](../courses/silverstone/README.md), an editable custom course with
+a Wing pit shortcut.
+
+1. Start the game normally and choose your mode and driver.
+2. Press **Up** from the cup-selection row to open **Custom** inside the game.
+3. Browse with the D-pad and confirm twice with **A**.
+4. To return to **Original**, press **B**.
+
+Time Trials keeps separate course records and ghosts. Grand Prix offers a
+standalone three-lap race against seven CPU rivals, followed by
+**Retry / Change Course / Quit**. Original cups retain their usual progression.
+
+The bundled course download is about 4.3 MB and loads at startup. Its optional
+preview media is fetched only when viewed. For the editing projects, course
+builds, and validation scope, see the [course documentation](../courses/README.md).
+
 For sharper track and character textures, see [texture packs](texture-packs.md).

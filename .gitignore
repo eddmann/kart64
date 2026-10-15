@@ -9,3 +9,9 @@ node_modules/
 *.o2r
 *.o2r.*
 baserom*
+
+# Pinned course-authoring dependencies, fetched locally.
+.cache/course-tools/
+
+# Original-art Silverstone course, explicitly bundled for native/web play.
+!courses/silverstone/runtime/silverstone-v1.9.o2r
